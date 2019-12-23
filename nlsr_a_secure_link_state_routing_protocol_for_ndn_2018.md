@@ -224,4 +224,33 @@ NLSR与基于IP的链路状态路由协议相比主要有以下几点不同：
 
   最后，在之前设计的部署过程中我们发现 *Sync Interest* 和 *LSA Interest* 的不受限制的多播，会产生过多的重复NACK，因为它们会循环回到发送该兴趣包的原始路由器。NACK还擦除了 *Sync Interest* 所需的PIT条目，从而导致携带新的LSA名称 *Sync Data packet* 的响应被延迟。为了解决这个问题，我们在 *Sync Interest* 和 *LSA Interest* 的名称中添加了 `/localhop` 作用域，以将它们的传播限制为仅传播给直接的邻居，从而消除了重复NACK和相关问题。 
 
-- 
+## 实现（Implementation）
+
+当前的NLSR设计是通过 *ndn-cxx* 库`[19]`使用C++语言实现的，并运行在NFD `[20]` 上（*最初的NLSR设计是在C中使用 CNNx `[5]` 来实现的*）。它是开源的 `[21]`，下面描述一些我们实现的细节。
+
+- ### 邻接建立协议（Adjacency Establishment Protocol）
+
+  NLSR的配置文件中由三个参数，可以用于修改邻接建立协议的行为。可以更改 *Hello Interest Interval* 以减少或增加周期性 *hello* 兴趣包的频率（*默认为 60秒* ）。*Hello Interest Timeout* 用于指定在重传 *hello Interest* 之前等待 *hello Data* 的时间。默认值为1秒，因为网络中两个相邻路由器的往返时间通常是小于1秒的。*Hello Interest Retry Amount* 参数用于指定在判定一个链接发送故障给并将其的状态置为 *down* 之前重发 *hello Interest* 的次数（*默认为3次，包括第一个发送的 hello包* ）。
+
+- ### LSA版本号（LSA Version Numbers）
+
+  每次更改后，LSA的版本号都会加1。启动时，NLSR必须使用比以前用于每种LSA类型的版本号更大的版本号。否则，网络中的其它路由器会认为该LSA已过时。为了解决这个问题，NLSR会记录每种LSA类型的当前版本号，它将从文件中读取这些版本号，并发布其第一个LSA，且其版本号大于其所记录的版本号。
+
+- ### 路由操作延迟（Routing Operation Delays）
+
+  NLSR的配置文件中，由两个参数可以用于平衡性能和开销，每个参数都是用于控制重要路由操作的时间。*Adjacency LSA Build Interval* 参数配置了请求邻接LSA之后到实际构建LSA的延迟。较长的时间延迟允许将多个邻接更改聚合到一此链接构建当中，从而减少了CPU的开销。另一方面，延迟越短，路由器可以更快的构建邻接LSA，以便网络可以使用通过其最新邻接关系的路径。默认值为5秒。*Routing Calculation Interval* 参数用于指定在计划路由表计算之后到构建路由表之前的延迟。更长的等待时间允许对LSDB的多次更改汇总到一次路由计算当中，但这也意味着路由器只有在执行计算之后才能开始使用更新的路径。默认值为15秒。
+
+- ### 安全（Security）
+
+  NLSR信任模型使用的每个密钥（*NLSR进程密钥除外*）都是使用 *ndn-cxx* `[19]` 的 *ndnsec* 工具创建的。为信任模型层次结构中的每个密钥的所有者创建一堆公私钥和相应的证书。密钥中每个公钥的证书均由层次结构中更高一级的密钥所有者签名。
+
+  直接使用 *ndn-cxx* 的安全API初始化NLSR时，会自动创建NLSR进程密钥。初始化时，NLSR会生成一个密钥对，并获得由路由器的私钥签名的公钥证书。NLSR进程使用其私钥对 *hello* 数据和LSA数据进行签名。每当重新启动NLSR时，新的NLSR进程就会生成给一个新的密钥对并创建一个新的证书。
+
+- ### 动态的名称前缀宣告和撤消（Dynamic Name Prefix Advertisement and Withdrawal）
+
+  网络的操作员/运营商（*operator*）可以在NLSR的配置文件中指定一组要由NLSR通告的名称前缀。NLSR构建一个名称LSA，其中包括名称集，并将其发布到网络。要在NLSR进程运行时修改发布的名称前缀，可以将 *command Interest* 发送到NLSR以发布或撤消特定的名称前缀。*command Interest* 的名称包含宣告或撤消所需的操作，以及宣告或撤消的名称前缀。NLSR将相应地构造一个新的名称LSA，并将其分发到网络。
+
+## 评估（Evaluation）
+
+
+
