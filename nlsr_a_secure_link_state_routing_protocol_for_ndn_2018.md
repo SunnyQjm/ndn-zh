@@ -1,5 +1,3 @@
-# 一种用于NDN的安全的链路状态路由协议
-
 > 原文地址：[A Secure Link State Routing Protocol for NDN](https://github.com/SunnyQjm/ndn-paper-translation/raw/master/original_paper/nlsr_a_secure_link_state_routing_protocol_for_ndn_2018.pdf)
 
 ## 摘要（Abstract）
@@ -94,10 +92,9 @@ NLSR与基于IP的链路状态路由协议相比主要有以下几点不同：
 
   每个LSA的名称都符合这样一个格式：`/localhop/<network>/NLSR/LSA/<site>/<router>/<lsa-type>/<version>`。第一个组件包含一个用于范围控制的名称—— *localhop* 范围限制一个LSA兴趣包/数据包只能转发给相邻的下一跳（不能进一步的传播）。由于每个节点都发送一个兴趣包来检索每个LSA，因此不需要传播任何超出当前节点直接邻居的LSA兴趣包。`<lsa-type>` 组件的值可以是 *name* 或者 *adjacency* ，`<version>` 组件标识了产生这个LSA的路由器的名字。每当一个路由器生成一个新版本的LSA，`version` 组件的值便会加1。
 
-  ![图 1  LSA格式](file://C:/Users/Sunny/Desktop/ndn-paper-translation/assets/image-20191222220247624.png?lastModify=1577092313)
-
+  ![图 1  LSA格式](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyMjIyMDI0NzYyNC5wbmc?x-oss-process=image/format,png)
   <center>图 1 LSA格式</center>
-具体的LSA的格式如图1所示，名称LSA（*Name LSA*）包含了本地用NLSR注册的所有名称前缀和由连接到这个路由器上的终端主机注入的名称前缀。一个邻接LSA（*Adjacency LSA*）包含一个路由器的所有的 *active* 的链接，且每个链接都与邻居路由器的名称和链接成本（*link cost*）相关联。 邻接LSA是在路由器启动时创建的，而且当通过周期性的 *hello* 消息检测到路由器链路的任何变化时都会创建一个新版本的邻接LSA（3.6节详细介绍）。
+  具体的LSA的格式如图1所示，名称LSA（*Name LSA*）包含了本地用NLSR注册的所有名称前缀和由连接到这个路由器上的终端主机注入的名称前缀。一个邻接LSA（*Adjacency LSA*）包含一个路由器的所有的 *active* 的链接，且每个链接都与邻居路由器的名称和链接成本（*link cost*）相关联。 邻接LSA是在路由器启动时创建的，而且当通过周期性的 *hello* 消息检测到路由器链路的任何变化时都会创建一个新版本的邻接LSA（3.6节详细介绍）。
   
 - ### LSAs的传播（Dissemination of LSAs）
 
@@ -107,44 +104,44 @@ NLSR与基于IP的链路状态路由协议相比主要有以下几点不同：
 
   在基于IP的链路状态路由协议，如OSPF和IS-IS `[16]` 中，也有对比两个相邻路由器LSDBs的机制。通常，路由器间相互发送包含自己LSDB中LSA标识符的摘要，如果检测到一个差异，路由器要么向邻居节点请求导致差异的LSA，要么发送自己的LSA给邻居。在这个方面，*ChronoSync*的效率要高一些——它只在节点之间交换一个 *hash* 值，而不是所有的LSA的名称。更重要的是，由于 *ChronoSync*（*通常也称为 Sync*）提供了对比亮哥哥数据集的功能，NLSR不需要重复造轮子，这使得NLSR的设计更加简单。
 
-  ![图 2  通过ChronoSync传播LSA](file://C:/Users/Sunny/Desktop/ndn-paper-translation/assets/image-20191223151749458.png?lastModify=1577092313)
-
+  ![图 2  通过ChronoSync传播LSA](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyMzE1MTc0OTQ1OC5wbmc?x-oss-process=image/format,png)
   <center>图 2 通过ChronoSync传播LSA</center>
-图2展示了网络中的LSA是如何传播的：
+  图2展示了网络中的LSA是如何传播的：
   
-- 为了同步标识LSDB中LSA的摘要树，每个路由器上运行的的 *ChronoSync* 协议会周期性的将同步兴趣包（*Sync Interest*，*其中包含LSDB中所有LSA名称的Hash*）发送给其它节点；（*步骤 1 和 步骤 2*）
+  - 为了同步标识LSDB中LSA的摘要树，每个路由器上运行的的 *ChronoSync* 协议会周期性的将同步兴趣包（*Sync Interest*，*其中包含LSDB中所有LSA名称的Hash*）发送给其它节点；（*步骤 1 和 步骤 2*）
+	  
+	  > 需要注意的是，NDN将名称相同的兴趣包聚合（*aggregates*）在一个PIT表项当中，并且只转发其中一个兴趣包，因此通常当所有节点都保持同步时，每个方向上的每个链接上最多由一个兴趣包等待被处理。
+	  
+	- 当一个LSA被添加进路由器B的LSDB时，该LSA的名称会被添加进路由器B的LSA名称集合当中，*ChronoSync* 会响应路由器A发送过来的 *Sync Interest*，回复的 *Sync Data packet* 当中包含这个新添加的LSA的名称；（*步骤 3* ）
+	  
+	- 路由器A的 *ChronoSync* 接收到该 *Sync Data* 后，会通知同个路由器中的NLSR进程由一个新的LSA名称，并且更新它的 LSA名称集合，此时路由器A和路由器B都会为新的名称集合计算新的 *hash* 值，并开始发送携带有该 *hash* 值的 *Sync Interest*；（*步骤 4 和 步骤 5*）
+	  
+	- 由于路由器A的NSLR接收到一个新的LSA名称通知，因此NLSR将会发送 *LSA Interest* 去拉取该LSA；（*步骤 6*）
+	  
+	- 接着路由器B将会发送一个 *LSA Data* （*其中包含了A要请求的 LSA*）响应路由器A发送过来的 *LSA Interest*；（步骤 7）
+	  
+	- 当路由器A的NLSR接收到 *LSA Data* 后，将收到的LSA插入到LSDB当中，至此两个路由器的LSDBs又再次同步了。
+	  
+	  > 可以查看 `[11]` 来详细了解 *ChronoSync* 的细节（例如：hash计算和差异性决断）
+	
   
-  > 需要注意的是，NDN将名称相同的兴趣包聚合（*aggregates*）在一个PIT表项当中，并且只转发其中一个兴趣包，因此通常当所有节点都保持同步时，每个方向上的每个链接上最多由一个兴趣包等待被处理。
-  
-- 当一个LSA被添加进路由器B的LSDB时，该LSA的名称会被添加进路由器B的LSA名称集合当中，*ChronoSync* 会响应路由器A发送过来的 *Sync Interest*，回复的 *Sync Data packet* 当中包含这个新添加的LSA的名称；（*步骤 3* ）
-  
-- 路由器A的 *ChronoSync* 接收到该 *Sync Data* 后，会通知同个路由器中的NLSR进程由一个新的LSA名称，并且更新它的 LSA名称集合，此时路由器A和路由器B都会为新的名称集合计算新的 *hash* 值，并开始发送携带有该 *hash* 值的 *Sync Interest*；（*步骤 4 和 步骤 5*）
-  
-- 由于路由器A的NSLR接收到一个新的LSA名称通知，因此NLSR将会发送 *LSA Interest* 去拉取该LSA；（*步骤 6*）
-  
-- 接着路由器B将会发送一个 *LSA Data* （*其中包含了A要请求的 LSA*）响应路由器A发送过来的 *LSA Interest*；（步骤 7）
-  
-- 当路由器A的NLSR接收到 *LSA Data* 后，将收到的LSA插入到LSDB当中，至此两个路由器的LSDBs又再次同步了。
-  
-  > 可以查看 `[11]` 来详细了解 *ChronoSync* 的细节（例如：hash计算和差异性决断）
-  
-
-由于链路状态路由协议依赖于LSAs来计算路由，所以它无法为 *LSA Interest* 生成路由。因此，LSAs的名称前缀 `/localhop//NLSR/LSA` 被配置成使用多播转发策略，这允许一个 *LSA Interest* 被转发到当前节点的所有邻居。如果任意一个邻居的内容缓存（CS，*Content Store*）或NLSR进程中由该LSA的一个拷贝，则会响应该 *LSA Interest*，否则就丢弃该 *LSA Interest*（*前面提到过 locolhop 范围限制了该 LSA Interest 只能传一跳* ）。
-
-为了移除由于路由器故障导致的失效的LSAs，每个路由器周期性的通过产生一个新版本的LSAs来更新自己的LSAs。当路由器接收到一个新版本的LSA时，任何更早版本的相同名字的LSA将会从LSDB中移除。此外，每个LSA都绑定有一个存活期，当存活期到期时，该LSA会被NLSR从LSDB中移除，这意味着如果一个路由器发生了故障，它的LSAs将不会在其它路由器的LSDB中保留。注意，当一个路由器发生故障（*奔溃*），它的邻居们会更新他们的LSAs，所以网络流量不会通过链接到奔溃路由器的那些链接流出。因此，正确的路由并不依赖于通过定期刷新以及设置LSA的生存期来删除过时的LSA。即便如此，拥有没有过时LSA的LSDB仍然有助于管理和问题诊断。因此，LSA的生存期和刷新周期应该设置为一个较长的时间间隔，例如：几个小时甚至几天，以减少相关消息和处理开销。
-
+  由于链路状态路由协议依赖于LSAs来计算路由，所以它无法为 *LSA Interest* 生成路由。因此，LSAs的名称前缀 `/localhop//NLSR/LSA` 被配置成使用多播转发策略，这允许一个 *LSA Interest* 被转发到当前节点的所有邻居。如果任意一个邻居的内容缓存（CS，*Content Store*）或NLSR进程中由该LSA的一个拷贝，则会响应该 *LSA Interest*，否则就丢弃该 *LSA Interest*（*前面提到过 locolhop 范围限制了该 LSA Interest 只能传一跳* ）。
+	
+  为了移除由于路由器故障导致的失效的LSAs，每个路由器周期性的通过产生一个新版本的LSAs来更新自己的LSAs。当路由器接收到一个新版本的LSA时，任何更早版本的相同名字的LSA将会从LSDB中移除。此外，每个LSA都绑定有一个存活期，当存活期到期时，该LSA会被NLSR从LSDB中移除，这意味着如果一个路由器发生了故障，它的LSAs将不会在其它路由器的LSDB中保留。注意，当一个路由器发生故障（*奔溃*），它的邻居们会更新他们的LSAs，所以网络流量不会通过链接到奔溃路由器的那些链接流出。因此，正确的路由并不依赖于通过定期刷新以及设置LSA的生存期来删除过时的LSA。即便如此，拥有没有过时LSA的LSDB仍然有助于管理和问题诊断。因此，LSA的生存期和刷新周期应该设置为一个较长的时间间隔，例如：几个小时甚至几天，以减少相关消息和处理开销。
+	
 - ### 安全（Security）
 
   每个NDN的数据包（*Data Packet*）都是经过数字签名的，并且生成的数字签名是组成数据包的一部分。签名包含名字、内容和少量对签名验证有用的支持数据，支持数据中很重要的一部分是`key locator` `[17]`，它指示了用于给这个数据包签名的 `key` 的名称，这样接收者就能通过这个名称去拉取到给这个数据包签名的 `key`（*当然我们只能拉取到公钥或证书，不能拉取到私钥*），进而验证这个数据包的签名 `[3]`。NLSR还需要验证用来给LSA签名的密钥是否是可信的，这就需要一个用于密钥认证的信任模型。NDN遵循SDSI `[18]` 中提出的分布式安全模型，将公钥、证书和本地的信任锚广泛的用于数据和密钥的验证。
 
-  ![图 3  NLSR信任层级](file://C:/Users/Sunny/Desktop/ndn-paper-translation/assets/image-20191223164833875.png?lastModify=1577092313)
-
+  ![图 3 NLSR信任层级](https://gitlab.qjm253.cn/SunnyQjm/ndn-paper-translation/raw/master/assets/image-20191223164833875.png?lastModify=1577092313)
   <center>图 3 NLSR信任层级</center>
+  
   - #### 信任模型（Trust Model）
-
+  
     如图3所示，NLSR使用一个5级分层信任模型来反映域内路由协议的管理结构。在顶层，网络本地由一个更认证机构，称为信任锚（*trust anchor*），它负责给站点（*site*）颁发证书，例如：组织中的部门或ISP中的PoP。每个站点（*site*）由一个或多个操作员（*operators*），这些操作员（*operators*）共同管理属于该站点的多个路由器。每个路由器（*router*）可以创建一个NLSR路由进程（*NLSR routing process*）来生产LSAs。这种分层的信任模型使得人们能够建立用于验证LSA的密钥链（*chain of keys*）——LSA必须由运行在与LSA源出于同一个路由器上并且有效的NLSR进程进行签名。为了成为有效的NLSR进程，进程密钥必须由相应的路由器密钥签名，而路由器密钥又应由同一站点的操作员之一签名。每个站点操作员的密钥必须由站点密钥签名，该密钥必须由信任锚使用其自签名根密钥进行认证。
-
+    
     <center>表 1  密钥和数据名字</center>
+    
     | Key/Data     | Name                        |
     | ------------ | --------------------------- |
     | Network Key  | /\<network>/KEY/\<key>        |
@@ -153,25 +150,26 @@ NLSR与基于IP的链路状态路由协议相比主要有以下几点不同：
     | Router Key | /\<network>/\<site>/\<router>/KEY/\<key> |
     | NLSR Key | /\<network>/\<site>/\<router>/NLSR/KEY/\<key> |
     | LSA Data | /localhop/\<network>/NLSR/LSA/\<site>/\<router>/\<lsa-type> |
-
+    
     如表1所示的是密钥的和数据的名称格式，密钥的名称明确表示了密钥在系统中扮演的角色。
-
+    
     > 路由器（*router*）和操作员（operator）的名称都在同一个前缀 `/<network>/<site>` 下，为了区分路由器和操作员的key的名字，我们在名称中使用不同的标签。`<router>` 组件包含路由器标记 *%C1.Router* 和 一个路由器标签，例如：`%C1.Router/Router3`，`<operator>` 组件包含操作员标记 *%C1.Operator* 和一个操作员标签，例如：`%C1.Operator/Operator2`
-
-    ![清单 1  用于hello和LSA消息验证的模型](assets/image-20191223173649355.png)
-
+    
+    ![清单 1  用于hello和LSA消息验证的模型](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyMzE3MzY0OTM1NS5wbmc?x-oss-process=image/format,png)
+    
     <center>清单 1  用于hello和LSA消息验证的模型</center>
-这些密钥之间的信任关系可以使用如清单1所示的信任模式 `[7]` 来表示，这将每个密钥的权限限制在很小的范围内。举例来说，一个操作员（*operator*）只能认证属于自己站点（*site*）的路由器，而操作员（*operator*）认证的任何其它密钥（*keys*）都将被视为无效，这种限制降低了密钥泄露对系统造成的影响。此外，这种多级的密钥层次结构减少了每个密钥的使用次数，从而进一步降低了密钥暴露的风险。
-  
-- #### 密钥获取（Key Retrieval）
-  
-  在NDN中，公钥（*public key*）仅仅是另一种类型的数据，可以像检索（*retrieved*）LSA一样（*参见3.3节* ），用兴趣包/数据包交互来检索。换句话来说，一个路由器可以通过发送一个携带密钥名称的 *Interest* 包（*即该 Interest 包的名字为密钥的名称* ）来获取到对应的密钥（*key*），网络会将该 *Interest* 包转发到包含对应公钥的路由器上。
-  
-  > 注意，密钥名称的最后一个组件 `<key>` 是一个 *KeyID*，通过 *KeyID* 可以区分相同前缀下的不同密钥，所以一个确定的密钥名称总是可以匹配到一个确定的密钥。默认情况下，*KeyID* 为密钥（*key*）的 *hash* 值。
-  
-  然而，由于在路由建立之前就必须拉取到对应的密钥来验证路由更新，因此NLSR需要一种不依赖于FIB表项便能检索所需密钥的机制，就像LSA的检索独立于路由一样。为此，我们使用一种叫 *DirectFetch* 的机制——当路由器接收到一个LSA，它便向收到LSA的接口（*face*）发送一个拉取对应签名密钥的 *Interest* 包。因为如果一个邻居路由器发过来一个LSA，那么发送LSA的那个邻居自己必然已经验证过那个 *LSA data* 包了，所以这个邻居肯定已经有可以用来验证该LSA包的密钥了。
-  
-  接着递归重复上述过程多次，来检索如图3所示的信任模型中直到信任根的所有密钥，用来验证给LSA签名的密钥（*即 NLSR 进程密钥* ）。为了加快密钥拉取和验证的速率，产生LSA的路由器可以将所有对应的密钥打包在一个 *Key Bundle* 当中，其它路由器可以去获取这个 *Key Bundle* 而不是一个密钥一个密钥的拉取。
+    
+    这些密钥之间的信任关系可以使用如清单1所示的信任模式 `[7]` 来表示，这将每个密钥的权限限制在很小的范围内。举例来说，一个操作员（*operator*）只能认证属于自己站点（*site*）的路由器，而操作员（*operator*）认证的任何其它密钥（*keys*）都将被视为无效，这种限制降低了密钥泄露对系统造成的影响。此外，这种多级的密钥层次结构减少了每个密钥的使用次数，从而进一步降低了密钥暴露的风险。
+    
+  - #### 密钥获取（Key Retrieval）
+    
+    在NDN中，公钥（*public key*）仅仅是另一种类型的数据，可以像检索（*retrieved*）LSA一样（*参见3.3节* ），用兴趣包/数据包交互来检索。换句话来说，一个路由器可以通过发送一个携带密钥名称的 *Interest* 包（*即该 Interest 包的名字为密钥的名称* ）来获取到对应的密钥（*key*），网络会将该 *Interest* 包转发到包含对应公钥的路由器上。
+    
+    > 注意，密钥名称的最后一个组件 `<key>` 是一个 *KeyID*，通过 *KeyID* 可以区分相同前缀下的不同密钥，所以一个确定的密钥名称总是可以匹配到一个确定的密钥。默认情况下，*KeyID* 为密钥（*key*）的 *hash* 值。
+    
+    然而，由于在路由建立之前就必须拉取到对应的密钥来验证路由更新，因此NLSR需要一种不依赖于FIB表项便能检索所需密钥的机制，就像LSA的检索独立于路由一样。为此，我们使用一种叫 *DirectFetch* 的机制——当路由器接收到一个LSA，它便向收到LSA的接口（*face*）发送一个拉取对应签名密钥的 *Interest* 包。因为如果一个邻居路由器发过来一个LSA，那么发送LSA的那个邻居自己必然已经验证过那个 *LSA data* 包了，所以这个邻居肯定已经有可以用来验证该LSA包的密钥了。
+    
+    接着递归重复上述过程多次，来检索如图3所示的信任模型中直到信任根的所有密钥，用来验证给LSA签名的密钥（*即 NLSR 进程密钥* ）。为了加快密钥拉取和验证的速率，产生LSA的路由器可以将所有对应的密钥打包在一个 *Key Bundle* 当中，其它路由器可以去获取这个 *Key Bundle* 而不是一个密钥一个密钥的拉取。
   
 - ### 多路径计算（Multipath Calculation）
 
@@ -198,10 +196,10 @@ NLSR与基于IP的链路状态路由协议相比主要有以下几点不同：
 
   > 前面说发生故障时其实时无法判断是链路故障还是路由器奔溃了，所以我猜它是不管什么故障都会尝试往那个邻居发送 *hello* 兴趣包来进行探测。
 
-  ![图 4  邻接故障和恢复检测](assets/image-20191223203430206.png)
-
+  ![图 4  邻接故障和恢复检测](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyMzIwMzQzMDIwNi5wbmc?x-oss-process=image/format,png)
   <center>图 4  邻接故障和恢复检测</center>
-> T1是接收 *hello* 数据包的超时时间，此后重发 *hello* 兴趣包，其默认值为1秒。第一次超时后，默认情况下，*hello* 兴趣包最多重传两次。
+  
+  > T1是接收 *hello* 数据包的超时时间，此后重发 *hello* 兴趣包，其默认值为1秒。第一次超时后，默认情况下，*hello* 兴趣包最多重传两次。
   >
   > T2是定期发送 *hello* 兴趣包之间的时间间隔，其默认值为60秒。
   >
@@ -262,59 +260,52 @@ NLSR与基于IP的链路状态路由协议相比主要有以下几点不同：
 
 - ### 拓扑（Topologys）
 
-  ![图 5  NDN测试床拓扑](assets/image-20191224105740538.png)
-
+  ![图 5  NDN测试床拓扑](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyNDEwNTc0MDUzOC5wbmc?x-oss-process=image/format,png)
   <center>图 5  NDN测试床拓扑</center>
-我们将在四种不同的网络拓扑上运行我们的实验，以此来测量网络拓扑的的规模增大时，NLSR的性能如何。我们的第一个实验拓扑使用的是NDN测试床拓扑的一个快照，它有20个节点和50条链接，具体拓扑连接情况如图5所示。其中，每个链路的路由成本设置为两个相邻节点之间的延迟。我们使用的另外三个较大的网络拓扑是类似真实 Internet 网络拓扑的结构，其节点数量不断增加（N = 41、58、78），上限受我们计算资源约束。由于 AS Internet 拓扑是自相似的 `[25]`，这意味着其子图保留了原始完整拓扑的所有结构属性，因此我们提取了大小为N的 AS Internet 拓扑的子图。
   
+
+  我们将在四种不同的网络拓扑上运行我们的实验，以此来测量网络拓扑的的规模增大时，NLSR的性能如何。我们的第一个实验拓扑使用的是NDN测试床拓扑的一个快照，它有20个节点和50条链接，具体拓扑连接情况如图5所示。其中，每个链路的路由成本设置为两个相邻节点之间的延迟。我们使用的另外三个较大的网络拓扑是类似真实 Internet 网络拓扑的结构，其节点数量不断增加（N = 41、58、78），上限受我们计算资源约束。由于 AS Internet 拓扑是自相似的 `[25]`，这意味着其子图保留了原始完整拓扑的所有结构属性，因此我们提取了大小为N的 AS Internet 拓扑的子图。
+
 - ### 结果（Results）
 
   第一个实验是在NDN测试平台拓扑上执行的，以确定在扩展到更大的网络拓扑之前，密钥身份验证和多路径计算对CPU的影响。其中，对于多路径实验，每个名称前缀的最大下一跳数均设置为4。图6显示了禁用和启用密钥身份验证后，所有节点随时间推移NLSR产生的CPU开销，其中，第一个是单路径计算，第二个是多路径计算。
 
-  ![图 6.1 使用单路径路由时，NLSR的总网络CPU利用率](assets/image-20191224110846484.png)
-
+  ![图 6.1 使用单路径路由时，NLSR的总网络CPU利用率](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyNDExMDg0NjQ4NC5wbmc?x-oss-process=image/format,png)
   <center>图 6.1 使用单路径路由时，NLSR的总网络CPU利用率</center>
-
-  ![图 6.2  使用多路径路由时，NLSR的总网络CPU利用率](assets/image-20191224110902285.png)
-
+  
+  ![图 6.2  使用多路径路由时，NLSR的总网络CPU利用率](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyNDExMDkwMjI4NS5wbmc?x-oss-process=image/format,png)
   <center>图 6.2 使用多路径路由时，NLSR的总网络CPU利用率</center>
-
+  
   从图中可以明显看出，即使加上我们提出的信任模型（*该模型需要验证多个级别的密钥* ），在路由器启动后，NLSR几乎不会招致额外的处理成本。在启动期间，密钥身份验证在单路径情况下增加29%的额外开销，在多路径情况下增加24%的开销。这是由于NDN在设计上对所有的数据包都进行了签名和验证，两种方案之间的唯一区别在于密钥验证，其中采用了信任模型的NLSR需要更多的才能从网络递归的获取多个密钥并验证。但是，由于对于每个新密钥只会执行一次，所以在验证和缓存了密钥之后，这部分的开销就基本没有了。图6还显示了，对于多路径路由，NLSR的CPU使用率高于单路径路由。由于在两种方案中，由于消息传递而导致的CPU成本相同，因此此处的差异主要是由于多路径计算的成本较高。在不启用和启用安全性的情况下，多路径计算分别在整个实验中分别增加了23％和14％的CPU开销。
 
   下一个实验将验证如何使用路由协议中的延迟参数（4.3节，*forwarding plane performance*、*Routing Calculation Interval* ）来实现路由收敛时间和路由开销之间的权衡（*tradeoff*）。尽管IP的路由协议中也存在类似的折衷，但是NDN中可以使用自适应的多路径转发，即它不仅仅依靠路由来处理拓扑变化（*即，由于支持多路径转发，即便网络拓扑发生一点小改变，某些链路失效了，NDN也能通过自适应的转发平面找到一条替代路径继续传输网络流量* ），所以在NDN中路由的收敛不像在IP中那么重要。因此，NDN中的操作员/网络管理员（ *operator* ）可以使用更大的延迟参数来降低路由开销。
 
   为了测量路由收敛时间，我们追踪随着时间LSDB的变化值，当变化值为0时，意味着网络已经同步并且收敛了。该实验在所有的四个网络拓扑上进行，设置一组对照，分别为使用默认的路由操作延迟和没有路由操作延迟。图7显示了每秒每个节点的LSDB的平均变化。在没有路由操作延迟的情况下，NLSR的收敛速度比使用默认延迟的对照组要快，但是其LSDB累积变化也更多。在启动期间，运行在NDN测试平台拓扑的实验组中使用默认延迟的一组所产生的LSDB变化比无延迟组少19%；而运行在78个节点的拓扑中少了22%。在LSA刷新和节点故障期间，默认延迟组和无延迟组在两种拓扑中生成了相同数量的LSDB更改。在节点故障恢复后，在NDN测试平台拓扑中默认延迟组产生的LSDB变化比无延迟组少1%，而在78个节点的拓扑中少27%。
 
-  ![图 7.1  NDN测试平台拓扑中NLSR的LSDB改变数量](assets/image-20191224145513550.png)
-
+  ![图 7.1  NDN测试平台拓扑中NLSR的LSDB改变数量](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyNDE0NTUxMzU1MC5wbmc?x-oss-process=image/format,png)
   <center>图 7.1  NDN测试平台拓扑中NLSR的LSDB改变数量</center>
-
-  ![图 7.2  41个节点拓扑中NLSR的LSDB改变数量](assets/image-20191224145526502.png)
-
+  
+  ![图 7.2  41个节点拓扑中NLSR的LSDB改变数量](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyNDE0NTUyNjUwMi5wbmc?x-oss-process=image/format,png)
   <center>图 7.2  41个节点拓扑中NLSR的LSDB改变数量</center>
-
-  ![图 7.3  58个节点拓扑中NLSR的LSDB改变数量](assets/image-20191224145540075.png)
-
+  
+  ![图 7.3  58个节点拓扑中NLSR的LSDB改变数量](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyNDE0NTU0MDA3NS5wbmc?x-oss-process=image/format,png)
   <center>图 7.3  58个节点拓扑中NLSR的LSDB改变数量</center>
-
-  ![图 7.4  78个节点拓扑中NLSR的LSDB改变数量](assets/image-20191224145552347.png)
-
+  
+  ![图 7.4  78个节点拓扑中NLSR的LSDB改变数量](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyNDE0NTU1MjM0Ny5wbmc?x-oss-process=image/format,png)
   <center>图 7.4  78个节点拓扑中NLSR的LSDB改变数量</center>
-
+  
   从图7中还能看出，拓扑越大，所需的收敛时间越长，并且每个节点的LSDB的累积变化也更多，而且与是否设置路由延迟无关，这个结果也是符合预期的。例如：在使用默认延迟的情况下，路由器启动时，与运行在NDN测试床拓扑的实验组相比，运行在78节点拓扑上的实验组的收敛时间要长上27%，在LSA刷新过程中的收敛时间要长19%，在故障过程中的响应时间要长40%，在恢复过程中的响应时间要长17%。
 
   为了展示NLSR的多路径路由计算带来的多路径转发特性的好处，我们在发生故障和恢复事件期间测量网络中 *ping* 的RTT。为了充分利用每个名称前缀的多个下一跳，我们使用一种称为“基于自适应SRTT的转发”（ASF，*Adaptive SRTT-based Forwarding*）`[26]`，该策略充分利用每个可用的下一跳来为每个名称前缀保持平滑的RTT（*smoothed RTT*）。该策略会选择路由级别最高的下一跳来转发兴趣包，并同时概率性的定期探测其它下一跳以学习RTT（*探测的概率和路由的级别成正比* ）。当探测到较低的平滑的RTT时，它将切换到该下一跳。此功能对于路由收敛之前处理故障和恢复很重要。该实验是在NDN测试平台拓扑上运行的，其中路由操作延迟设置为默认值。
 
-  ![图 8.1  转发收敛过程中单路径和多路径之间的RTT比率](assets/image-20191224151649080.png)
-
+  ![图 8.1  转发收敛过程中单路径和多路径之间的RTT比率](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyNDE1MTY0OTA4MC5wbmc?x-oss-process=image/format,png)
   <center>图 8.1  转发收敛过程中单路径和多路径之间的RTT比率</center>
-
+  
   图8.1显示了每秒钟每对节点对的单路径路由和多路径路由之间的RTT比率。在超时情况下，我们设置用于计算超时数据包的RTT等于971ms，即拓扑中最长路径的权重。比率的中位数与第5个百分点和第95个百分点一起绘制。在故障事件期间，由于单路径情况下的超时，第95个百分位数要高得多，而多路径可以选择其他下一跳进行转发。在NLSR重新计算路由表并安装新的下一跳之前，单路径无法补救这些超时。请注意，有时由于排队和其他因素导致RTT发生变化，该比率会略低于1。此外，该图的最大Y值为1.1，但第95个百分位数扩展得更高，节点故障后20秒内的比例接近5。
 
-  ![图 8.2  转发收敛过程中ping丢包率](assets/image-20191224151659820.png)
-
+  ![图 8.2  转发收敛过程中ping丢包率](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9naXRsYWIucWptMjUzLmNuL1N1bm55UWptL25kbi1wYXBlci10cmFuc2xhdGlvbi9yYXcvbWFzdGVyL2Fzc2V0cy9pbWFnZS0yMDE5MTIyNDE1MTY1OTgyMC5wbmc?x-oss-process=image/format,png)
   <center>图 8.2  转发收敛过程中ping丢包率</center>
-
+  
   图8.2显示了故障和恢复事件期间单路径和多路径所引起的损失率。由于上述原因，单路径的丢失率高于多路径。我们可以进一步观察：在单路径情况下，较高的延迟和损失仅在节点故障后的前20秒内发生。这表明NLSR在默认操作延迟后很快收敛，因为一旦路由收敛，则多路径情况下的最佳下一跳与单路径情况下的相同。
 
 ## 开发和部署过程中的经验教训（*Lessons From Development and Deployment*）
