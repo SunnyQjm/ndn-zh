@@ -206,9 +206,9 @@ NLSR与基于IP的链路状态路由协议相比主要有以下几点不同：
   > T2是定期发送 *hello* 兴趣包之间的时间间隔，其默认值为60秒。
   >
   > 为了简便起见，我们没有在兴趣包和数据包的名称中包含路由器标记（*实际上是有的*）
-  
+
   如果相邻的NLSR进程奔溃后恢复，则邻居会开始发送 *hello* 兴趣包并接收对应的 *hello* 数据包。NLSR将在收到来自 *INACTIVE* 状态的邻居的消息后立即向其发送 *hello* 兴趣包，而不是等待发送下一个计划的 *hello* 兴趣包，以加快邻接关系的建立。图4演示了节点A检测到节点C的邻接故障，以及检测到节点B从故障中恢复的过程。
-  
+
   NLSR还会利用NFD的接口事件通知（*face event notifications*）来快速的响应链路失败。当一个连接到某个邻居的 *face* 接口被销毁，NFD会给NLSR发送一个 *Face Event Notification*，其中包含了被销毁的 *face* 接口的 *Face ID*。NLSR会利用这个 *Face ID* 找到对应的 *face* 接口时通向哪个邻居的，然后将这个邻居的状态标记为 *INACTIVE*，重新生成一个邻接LSA（*Adjacency LSA* ），并安排一个路由表计算任务。当一个新的 *face* 被创建，NLSR也会收到一个通知，这样它便可以向这个新创建的 *face* 接口发送 *hello* 兴趣包来创建邻接关系。
 
 
@@ -238,7 +238,7 @@ NLSR与基于IP的链路状态路由协议相比主要有以下几点不同：
 
 - ### 路由操作延迟（Routing Operation Delays）
 
-  NLSR的配置文件中，由两个参数可以用于平衡性能和开销，每个参数都是用于控制重要路由操作的时间。*Adjacency LSA Build Interval* 参数配置了请求邻接LSA之后到实际构建LSA的延迟。较长的时间延迟允许将多个邻接更改聚合到一此链接构建当中，从而减少了CPU的开销。另一方面，延迟越短，路由器可以更快的构建邻接LSA，以便网络可以使用通过其最新邻接关系的路径。默认值为5秒。*Routing Calculation Interval* 参数用于指定在计划路由表计算之后到构建路由表之前的延迟。更长的等待时间允许对LSDB的多次更改汇总到一次路由计算当中，但这也意味着路由器只有在执行计算之后才能开始使用更新的路径。默认值为15秒。
+  NLSR的配置文件中，由两个参数可以用于平衡性能和开销，每个参数都是用于控制重要路由操作的时间。（） 参数配置了请求邻接LSA之后到实际构建LSA的延迟。较长的时间延迟允许将多个邻接更改聚合到一此链接构建当中，从而减少了CPU的开销。另一方面，延迟越短，路由器可以更快的构建邻接LSA，以便网络可以使用通过其最新邻接关系的路径。默认值为5秒。*Routing Calculation Interval* 参数用于指定在计划路由表计算之后到构建路由表之前的延迟。更长的等待时间允许对LSDB的多次更改汇总到一次路由计算当中，但这也意味着路由器只有在执行计算之后才能开始使用更新的路径。默认值为15秒。
 
 - ### 安全（Security）
 
@@ -252,5 +252,139 @@ NLSR与基于IP的链路状态路由协议相比主要有以下几点不同：
 
 ## 评估（Evaluation）
 
+本节将从CPU处理时间（*CPU processing time*）、路由收敛时间（*routing convergence time*）和转发平面性能（*forwarding plane performance*）方面介绍NLSR的评估结果。我们所有的实验都是使用Mini-NDN `[22]`（*基于Mininet `[23]` 提供的NDN网络仿真工具* ）进行的。在Mini-NDN中，整个网络拓扑可以在一台机器上运行，并且拓扑中的每个节点都在具有自己资源的容器中执行。实验是在装有 *2.7Ghz Intel Xeon E5-2680 CPU* 的服务器上运行的。
 
+- ### 场景（Scenarios）
 
+  每个实验将持续600秒。首先，启动每个路由器上的NLSR进程，并且在接下来的300秒内收敛，收敛后保持网络稳定。接下来会在网络中出发三个事件，并藉此来测试和评估NLSR在不同情况下的性能。在300秒标记处，路由器将开始刷新LSA（*注意，这边为了在短时间内测试协议，我们将刷新计时器的时间设置为300秒，而不是几天* ）；在480秒时，将网络拓扑中度数最高的节点关闭，并保持故障60秒；在540秒时，恢复先前关闭的节点。
+
+  为了评估单路径和多路径路由下的转发性能，我们设计一个新的实验，运行和上述一样的场景。不同的是我们首先在网络中的每个节点上运行 *ping server*，并且在两分钟后，在网络中节点两两之间每秒执行一次 *ping* 操作（*在本实验中，我们使用 ndnping 工具 `[24]` 生成 ping 流量* ）。此外，为了评估路由操作延迟（*routing operation delays*）对路由和转发收敛的影响，我们设计了一组对照实验，分别是使用默认的延迟和不适用延迟。
+
+- ### 拓扑（Topologys）
+
+  ![图 5  NDN测试床拓扑](assets/image-20191224105740538.png)
+
+  <center>图 5  NDN测试床拓扑</center>
+我们将在四种不同的网络拓扑上运行我们的实验，以此来测量网络拓扑的的规模增大时，NLSR的性能如何。我们的第一个实验拓扑使用的是NDN测试床拓扑的一个快照，它有20个节点和50条链接，具体拓扑连接情况如图5所示。其中，每个链路的路由成本设置为两个相邻节点之间的延迟。我们使用的另外三个较大的网络拓扑是类似真实 Internet 网络拓扑的结构，其节点数量不断增加（N = 41、58、78），上限受我们计算资源约束。由于 AS Internet 拓扑是自相似的 `[25]`，这意味着其子图保留了原始完整拓扑的所有结构属性，因此我们提取了大小为N的 AS Internet 拓扑的子图。
+  
+- ### 结果（Results）
+
+  第一个实验是在NDN测试平台拓扑上执行的，以确定在扩展到更大的网络拓扑之前，密钥身份验证和多路径计算对CPU的影响。其中，对于多路径实验，每个名称前缀的最大下一跳数均设置为4。图6显示了禁用和启用密钥身份验证后，所有节点随时间推移NLSR产生的CPU开销，其中，第一个是单路径计算，第二个是多路径计算。
+
+  ![图 6.1 使用单路径路由时，NLSR的总网络CPU利用率](assets/image-20191224110846484.png)
+
+  <center>图 6.1 使用单路径路由时，NLSR的总网络CPU利用率</center>
+
+  ![图 6.2  使用多路径路由时，NLSR的总网络CPU利用率](assets/image-20191224110902285.png)
+
+  <center>图 6.2 使用多路径路由时，NLSR的总网络CPU利用率</center>
+
+  从图中可以明显看出，即使加上我们提出的信任模型（*该模型需要验证多个级别的密钥* ），在路由器启动后，NLSR几乎不会招致额外的处理成本。在启动期间，密钥身份验证在单路径情况下增加29%的额外开销，在多路径情况下增加24%的开销。这是由于NDN在设计上对所有的数据包都进行了签名和验证，两种方案之间的唯一区别在于密钥验证，其中采用了信任模型的NLSR需要更多的才能从网络递归的获取多个密钥并验证。但是，由于对于每个新密钥只会执行一次，所以在验证和缓存了密钥之后，这部分的开销就基本没有了。图6还显示了，对于多路径路由，NLSR的CPU使用率高于单路径路由。由于在两种方案中，由于消息传递而导致的CPU成本相同，因此此处的差异主要是由于多路径计算的成本较高。在不启用和启用安全性的情况下，多路径计算分别在整个实验中分别增加了23％和14％的CPU开销。
+
+  下一个实验将验证如何使用路由协议中的延迟参数（4.3节，*forwarding plane performance*、*Routing Calculation Interval* ）来实现路由收敛时间和路由开销之间的权衡（*tradeoff*）。尽管IP的路由协议中也存在类似的折衷，但是NDN中可以使用自适应的多路径转发，即它不仅仅依靠路由来处理拓扑变化（*即，由于支持多路径转发，即便网络拓扑发生一点小改变，某些链路失效了，NDN也能通过自适应的转发平面找到一条替代路径继续传输网络流量* ），所以在NDN中路由的收敛不像在IP中那么重要。因此，NDN中的操作员/网络管理员（ *operator* ）可以使用更大的延迟参数来降低路由开销。
+
+  为了测量路由收敛时间，我们追踪随着时间LSDB的变化值，当变化值为0时，意味着网络已经同步并且收敛了。该实验在所有的四个网络拓扑上进行，设置一组对照，分别为使用默认的路由操作延迟和没有路由操作延迟。图7显示了每秒每个节点的LSDB的平均变化。在没有路由操作延迟的情况下，NLSR的收敛速度比使用默认延迟的对照组要快，但是其LSDB累积变化也更多。在启动期间，运行在NDN测试平台拓扑的实验组中使用默认延迟的一组所产生的LSDB变化比无延迟组少19%；而运行在78个节点的拓扑中少了22%。在LSA刷新和节点故障期间，默认延迟组和无延迟组在两种拓扑中生成了相同数量的LSDB更改。在节点故障恢复后，在NDN测试平台拓扑中默认延迟组产生的LSDB变化比无延迟组少1%，而在78个节点的拓扑中少27%。
+
+  ![图 7.1  NDN测试平台拓扑中NLSR的LSDB改变数量](assets/image-20191224145513550.png)
+
+  <center>图 7.1  NDN测试平台拓扑中NLSR的LSDB改变数量</center>
+
+  ![图 7.2  41个节点拓扑中NLSR的LSDB改变数量](assets/image-20191224145526502.png)
+
+  <center>图 7.2  41个节点拓扑中NLSR的LSDB改变数量</center>
+
+  ![图 7.3  58个节点拓扑中NLSR的LSDB改变数量](assets/image-20191224145540075.png)
+
+  <center>图 7.3  58个节点拓扑中NLSR的LSDB改变数量</center>
+
+  ![图 7.4  78个节点拓扑中NLSR的LSDB改变数量](assets/image-20191224145552347.png)
+
+  <center>图 7.4  78个节点拓扑中NLSR的LSDB改变数量</center>
+
+  从图7中还能看出，拓扑越大，所需的收敛时间越长，并且每个节点的LSDB的累积变化也更多，而且与是否设置路由延迟无关，这个结果也是符合预期的。例如：在使用默认延迟的情况下，路由器启动时，与运行在NDN测试床拓扑的实验组相比，运行在78节点拓扑上的实验组的收敛时间要长上27%，在LSA刷新过程中的收敛时间要长19%，在故障过程中的响应时间要长40%，在恢复过程中的响应时间要长17%。
+
+  为了展示NLSR的多路径路由计算带来的多路径转发特性的好处，我们在发生故障和恢复事件期间测量网络中 *ping* 的RTT。为了充分利用每个名称前缀的多个下一跳，我们使用一种称为“基于自适应SRTT的转发”（ASF，*Adaptive SRTT-based Forwarding*）`[26]`，该策略充分利用每个可用的下一跳来为每个名称前缀保持平滑的RTT（*smoothed RTT*）。该策略会选择路由级别最高的下一跳来转发兴趣包，并同时概率性的定期探测其它下一跳以学习RTT（*探测的概率和路由的级别成正比* ）。当探测到较低的平滑的RTT时，它将切换到该下一跳。此功能对于路由收敛之前处理故障和恢复很重要。该实验是在NDN测试平台拓扑上运行的，其中路由操作延迟设置为默认值。
+
+  ![图 8.1  转发收敛过程中单路径和多路径之间的RTT比率](assets/image-20191224151649080.png)
+
+  <center>图 8.1  转发收敛过程中单路径和多路径之间的RTT比率</center>
+
+  图8.1显示了每秒钟每对节点对的单路径路由和多路径路由之间的RTT比率。在超时情况下，我们设置用于计算超时数据包的RTT等于971ms，即拓扑中最长路径的权重。比率的中位数与第5个百分点和第95个百分点一起绘制。在故障事件期间，由于单路径情况下的超时，第95个百分位数要高得多，而多路径可以选择其他下一跳进行转发。在NLSR重新计算路由表并安装新的下一跳之前，单路径无法补救这些超时。请注意，有时由于排队和其他因素导致RTT发生变化，该比率会略低于1。此外，该图的最大Y值为1.1，但第95个百分位数扩展得更高，节点故障后20秒内的比例接近5。
+
+  ![图 8.2  转发收敛过程中ping丢包率](assets/image-20191224151659820.png)
+
+  <center>图 8.2  转发收敛过程中ping丢包率</center>
+
+  图8.2显示了故障和恢复事件期间单路径和多路径所引起的损失率。由于上述原因，单路径的丢失率高于多路径。我们可以进一步观察：在单路径情况下，较高的延迟和损失仅在节点故障后的前20秒内发生。这表明NLSR在默认操作延迟后很快收敛，因为一旦路由收敛，则多路径情况下的最佳下一跳与单路径情况下的相同。
+
+## 开发和部署过程中的经验教训（*Lessons From Development and Deployment*）
+
+NLSR作为一个实际的用例推动了NDN功能的开发，例如：ndn-cxx库的安全功能和信任模型功能、NFD中的RIB和前缀管理功能以及 *ChronoSync* 中的同步机制。同时，同时这些功能大大简化了我们的协议设计和开发。例如，使用 *ChronoSync* 传播新的LSA意味着我们不需要发明一种新的机制来获取新LSAs产生的通知。
+
+此外，测试平台的部署有利于发现潜在的问题。密钥验证器（*key validator*）用于验证接收到的密钥和证书，但是这些密钥和证书不能是未来创建的（*即密钥或证书的生成时间比执行验证的机器上的当前时间还要晚* ）。如果路由器的时间不同步就会出现这种情况。因此，我们添加了一些措施来处理稍微不同步的时钟。但是，如果任何一台试验机的时间与其他机器的时间截然不同，则其LSA可能会被其他人拒绝，反之亦然。这意味着网络必须大致同步时间才能使协议正常工作。另一个问题是，NLSR记录其LSA版本号的序列号文件在操作过程中或重新引导期间可能会损坏，这可能导致路由器注入的LSA版本号比已分发的版本号更旧。在这种情况下，新的LSA将被其他路由器丢弃，因此该路由器不能成为拓扑的一部分。解决这个问题是我们正在进行的工作。
+
+## 结论（Conclusion）
+
+到目前为止，NLSR的设计在以下几个方面提供了很好的学习经验：
+
+- 设计命名方案以反映路由系统中各个实体之间的关系；
+- 开发用于路由协议中密钥验证的信任模型；
+- 对NDN中使用 *Interest/Data* 交换来传播路由更新消息的新设计模式进行积极的调整。
+
+此外，使用命名数据进行通信可以实现“同步”的概念，该概念有助于在分布式系统中实现可靠的数据集同步，从而使NLSR对损失的适应性更高，并且在概念上更简单。
+
+在不久的将来，我们计划使用 *ChronoSync* 来分发密钥，类似于LSA的分发方式。如果以同步方式主动分发密钥，则节点可以在密钥到期后立即学习新密钥，以防止某些攻击，例如密钥重播攻击。对于长期的全局路由解决方案，我们正在探索新型的路由设计，例如双曲路由 `[26]`，以扩展NDN中的路由。由于NDN的自适应多路径转发可以在转发平面上处理各种数据包传递问题，因此可以缓解路由平面上的收敛延迟要求。这就为通过权衡收敛速度而减少路由更新的新型路由设计打开了大门。
+
+## 引用
+
+[1] V. Jacobson, D. K. Smetters, J. D. Thornton, M. F. Plass, N. H. Briggs, and R. L. Braynard, ‘‘Networking named content,’’ in Proc. ACM CoNEXT, 2009, pp. 1–12. 
+
+[2] L. Zhang et al., ‘‘Named data networking (NDN) project,’’ Named Data Networking Project, Tech. Rep. NDN-0001, Oct. 2010.
+
+ [3] L. Zhang et al., ‘‘Named data networking,’’ ACM SIGCOMM Comput. Commun. Rev., vol. 44, no. 3, pp. 66–73, Jul. 2014.
+
+ [4] C. Yi, A. Afanasyev, I. Moiseenko, L. Wang, B. Zhang, and L. Zhang, ‘‘A case for stateful forwarding plane,’’ Comput. Commun., vol. 36, no. 7, pp. 779–791, 2013. [Online]. Available: http://dx.doi.org/10.1016/j.comcom.2013.01.005 
+
+[5] A. M. Hoque, S. O. Amin, A. Alyyan, B. Zhang, L. Zhang, and L. Wang, ‘‘NLSR: Named-data link state routing protocol,’’ in Proc. ACM SIGCOMM Workshop Inf.-Centric Netw., 2013, pp. 15–20. 
+
+[6] J. Moy, OSPF Version 2, document RFC 2328, SRI Network Information Center, Sep. 1998. 
+
+[7] Y. Yu, A. Afanasyev, D. Clark, K. Claffy, V. Jacobson, and L. Zhang, ‘‘Schematizing and automating trust in named data networking,’’ in Proc. 2nd ACM ICN Conf., 2015, pp. 1–10. 
+
+[8] C. Yi, J. Abraham, A. Afanasyev, L. Wang, B. Zhang, and L. Zhang, ‘‘On the role of routing in named data networking,’’ in Proc. ACM SIGCOMM ICN Conf., 2014, pp. 27–36. 
+
+[9] PARC. CCNx Open Srouce Platform. [Online]. Available: http://www. ccnx.org 
+
+[10] NDN Project Team. The NDN Platform. [Online]. Available: http://nameddata.net/codebase/platform/ 
+
+[11] Z. Zhu and A. Afanasyev, ‘‘Let’s ChronoSync: Decentralized dataset state synchronization in Named Data Networking,’’ in Proc. IEEE ICNP, Oct. 2013, pp. 1–10. 
+
+[12] N. P. Team. NLSR 0.1.0. [Online]. Available: http://nameddata.net/doc/NLSR/0.1.0 
+
+[13] H. Dai, J. Lu, Y. Wang, and B. Liu, ‘‘A two-layer intra-domain routing scheme for named data networking,’’ in Proc. Next Generat. Netw. Internet Symp. GLOBECOM, Dec. 2012, pp. 2815–2820. 
+
+[14] E. Hemmati and J. Garcia-Luna-Aceves, ‘‘A new approach to name-based link-state routing for information-centric networks,’’ in Proc. 2nd ACM ICN Conf. (ICN), 2015, pp. 29–38. 
+
+[15] J. J. Garcia-Luna-Aceves, ‘‘Routing to multi-instantiated destinations: Principles and applications,’’ in Proc. IEEE 22nd Int. Conf. Netw. Protocols (ICNP), Oct. 2014, pp. 155–166. 
+
+[16] Intermediate System to Intermediate System Intra-Domain Routeing Information Exchange Protocol for Use in Conjunction With the Protocol for Providing the Connectionless-Mode Network Service (ISO 8473), Int. Standard 10589:2002, ISO, 2nd ed., 2002. 
+
+[17] NDN Packet Format Specification. [Online]. Available: http://nameddata.net/doc/ndn-tlv/ 
+
+[18] R. L. Rivest and B. Lampson, ‘‘SDSI—A simple distributed security infrastructure,’’ MIT, Cambridge, MA, USA, Tech. Rep., 1996. 
+
+[19] N. P. Team. NDN-CXX. [Online]. Available: http://nameddata.net/doc/ndn-cxx/ 
+
+[20] N. P. Team. NFD—NDN Forwarding Daemon. [Online]. Available: http:// named-data.net/doc/nfd/ 
+
+[21] N. P. Team. Named Data Link State Routing. [Online]. Available: https:// github.com/named-data/NLSR 
+
+[22] N. P. Team. NFD—NDN Forwarding Daemon. [Online]. Available: http:// named-data.net/doc/nfd/ 
+
+[23] B. Lantz, B. Heller, and N. McKeown, ‘‘A network in a laptop: Rapid prototyping for software-defined networks,’’ in Proc. 9th ACM SIGCOMM Workshop Hot Topics Netw., 2010, Art. no. 19. 
+
+[24] NDN-Tools GitHub. [Online]. Available: https://github.com/nameddata/ndn-tools 
+
+[25] M. Á. Serrano, D. Krioukov, and M. Boguñá, ‘‘Self-similarity of complex networks and hidden metric spaces,’’ Phys. Rev. Lett., vol. 100, no. 7, p. 78701, 2008. 
+
+[26] V. Lehman et al., ‘‘An experimental investigation of hyperbolic routing with a smart forwarding plane in NDN,’’ in Proc. IEEE IWQoS, Jun. 2016, pp. 1–10.
