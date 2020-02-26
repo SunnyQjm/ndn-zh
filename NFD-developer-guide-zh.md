@@ -52,7 +52,7 @@ NFD将在三个方面不断发展： **改进模块化框架** ， **符合NDN�
 - 也可以是覆盖隧道（ *overlay tunnel* ）——NDN作为TCP，UDP或WebSocket之上的覆盖；
 - 另外，NFD和本地应用程序之间的通信可以通过也是Face的Unix域套接字来完成。
 
-*Face* 由 *LinkService* 和 *Transport* 组成。  *LinkService* 为 *Face* 提供高级服务，例如分段和重组，网络层计数器和故障检测，而Transport充当基础网络传输协议（TCP，UDP，以太网等）的包装，并提供链路层计数器之类的服务。Face通过操作系统API读取传入的流或数据报，从链路协议数据包中提取网络层数据包，并将这些网络层数据包（NDN数据包格式Interests，Datas或Nacks）传递给转发（ *Forwarding* ）模块。
+*Face* 由 *LinkService* 和 *Transport* 组成。  *LinkService* 为 *Face* 提供高级服务，例如分片和重组，网络层计数器和故障检测，而Transport充当基础网络传输协议（TCP，UDP，以太网等）的包装，并提供链路层计数器之类的服务。Face通过操作系统API读取传入的流或数据报，从链路协议数据包中提取网络层数据包，并将这些网络层数据包（NDN数据包格式Interests，Datas或Nacks）传递给转发（ *Forwarding* ）模块。
 
 网络层数据包（Interest，Data或Nack）由转发管道（ *forwarding pipelines* ）处理，转发管道定义了对数据包进行的一系列操作步骤。NFD的数据平面是有状态的，NFD对数据包的处理方式不仅取决于数据包本身，还取决于存储在表中的转发状态。
 
@@ -64,7 +64,7 @@ NFD将在三个方面不断发展： **改进模块化框架** ， **符合NDN�
 - 还可以使用存储在PIT条目中的特定的策略信息；
 - 也可以记录和使用存储在 *Measurements* 表项中的数据面的性能测量结果。
 
-在策略模块决定将兴趣包转发到指定的 *Face* 后，该兴趣包将在转发管道（ *forwarding pipelines* ）中经过更多步骤，然后将其传递给 *Face* 。 *Face* 根据基础协议，在必要时将兴趣包分段，将网络层数据包封装在一个或多个链路层数据包中，然后通过操作系统 APIs 将链路层数据包作为输出流或数据报发送。
+在策略模块决定将兴趣包转发到指定的 *Face* 后，该兴趣包将在转发管道（ *forwarding pipelines* ）中经过更多步骤，然后将其传递给 *Face* 。 *Face* 根据基础协议，在必要时将兴趣包分片，将网络层数据包封装在一个或多个链路层数据包中，然后通过操作系统 APIs 将链路层数据包作为输出流或数据报发送。
 
 NFD对一个数据包（ *Data packet* ）到来的处理方式有所不同。它的第一步是检查兴趣表（PIT），以查看是否有此数据包可以满足的PIT条目，然后选择所有匹配的条目以进行进一步处理。 如果此数据包（ *Data packet* ）不能满足任何PIT条目，则它是未经请求的（ *unsolicited* ）并且将被丢弃。 否则，数据将添加到内容存储（ *CS* ）中，接着通知负责每个匹配的PIT条目的转发策略。通过此通知，以及另一个“无数据返回”超时，该策略能够观察路径的可访问性和性能。该策略可以在 *Measurements* 表中记住其观察结果，以改进其将来的决策。最后，将数据包（ *Data packet* ）发送给所有匹配的记录在PIT条目的下游记录中的请求者。通过 *Face* 发送数据包（ *Data packet* ）的过程类似于发送兴趣包（ *Interest packet* ）。
 
@@ -129,11 +129,11 @@ NFD作为网络转发器，在网络接口之间移动数据包。NFD不仅可�
 
 <center>图2  Face = LinkService + Transport</center>
 
-**内部结构（ *Internal structure* ）** ：在内部，*Face* 由 *LinkService* 和 *Transport* 组成（图2）。*Transport* （第2.2节）是 *Face* 较底层的部分，包裹了底层的通信机制（例如套接字或libpcap句柄），并为 *Face* 提供尽力而为的TLV数据包传递服务。*LinkService* （第2.3节）是 *Face* 较上层的部分，它在网络层数据包和较低层数据包之间进行转换，并提供其他服务，例如分段、链路故障检测和重传。*LinkService* 包含一个分段器（ *fragmentation* ）和一个重组器（ *reassembly* ），以允许它执行分段和重组。
+**内部结构（ *Internal structure* ）** ：在内部，*Face* 由 *LinkService* 和 *Transport* 组成（图2）。*Transport* （第2.2节）是 *Face* 较底层的部分，包裹了底层的通信机制（例如套接字或libpcap句柄），并为 *Face* 提供尽力而为的TLV数据包传递服务。*LinkService* （第2.3节）是 *Face* 较上层的部分，它在网络层数据包和较低层数据包之间进行转换，并提供其他服务，例如分片、链路故障检测和重传。*LinkService* 包含一个分片器（ *fragmentation* ）和一个重组器（ *reassembly* ），以允许它执行分片和重组。
 
 *Face* 被实现为`nfd::face::Face` 类。 Face类被设计为不可继承的（单元测试除外），并且传递给其构造函数的 *LinkService*  和 *Transport* 完全定义了其行为。在构造函数中， *LinkService*  和 *Transport* 都被赋予了指向彼此和指向 *Face* 的指针，因此它们可以以最低的运行时开销相互调用。
 
-接收和发送的数据包在传递到 *forwarding* 或在链路上发送之前分别通过 *LinkService*  和 *Transport* 。 *Transport* 收到数据包后，将通过调用`LinkService::receivePacket`函数将其传递到 *LinkService* 。当通过 *Face* 发送数据包时，它首先通过特定于数据包类型的函数（`Face::sendInterest`、`Face::sendData`或`Face::sendNack`）传递给 *LinkService* 。处理完数据包后，将通过调用`Transport::send`函数将其传递，或者如果已分段，则将其碎片传递到 *Transport* 。在 *LinkService* 和 *Transport* 中，使用远程端点ID（`Transport::EndpointId`）标识远程端点，该ID是64位无符号整数，其中包含每个远程主机的协议特定的唯一标识符。
+接收和发送的数据包在传递到 *forwarding* 或在链路上发送之前分别通过 *LinkService*  和 *Transport* 。 *Transport* 收到数据包后，将通过调用`LinkService::receivePacket`函数将其传递到 *LinkService* 。当通过 *Face* 发送数据包时，它首先通过特定于数据包类型的函数（`Face::sendInterest`、`Face::sendData`或`Face::sendNack`）传递给 *LinkService* 。处理完数据包后，将通过调用`Transport::send`函数将其传递，或者如果已分片，则将其碎片传递到 *Transport* 。在 *LinkService* 和 *Transport* 中，使用远程端点ID（`Transport::EndpointId`）标识远程端点，该ID是64位无符号整数，其中包含每个远程主机的协议特定的唯一标识符。
 
 ### 2.2 Transport
 
@@ -217,7 +217,7 @@ UDP单播传输的静态属性包含：
 
 `UnicastUdpTransport`派生自`DatagramTransport`。这样，它是通过将现有的UDP套接字添加到传输中来创建的。
 
-单播UDP传输依赖IP分段，而不是将数据包适配到基础链路的MTU。 由于中间路由器能够根据需要对数据包进行分段，因此这允许数据包遍历具有较低MTU的链接。 通过阻止在传出数据包上设置“不分段（DF）”标志来启用IP分段。 在Linux上，这是通过禁用PMTU发现来完成的。
+单播UDP传输依赖IP分片，而不是将数据包适配到基础链路的MTU。 由于中间路由器能够根据需要对数据包进行分片，因此这允许数据包遍历具有较低MTU的链接。 通过阻止在传出数据包上设置“不分片（DF）”标志来启用IP分片。 在Linux上，这是通过禁用PMTU发现来完成的。
 
 当传输接收到太大或不完整的数据包时，该数据包将被丢弃。 如果设置了非零的空闲超时，则具有按需持久性的单播UDP传输将超时。
 
@@ -288,4 +288,74 @@ WebSocket对NDN数据包的封装`WebSocketTransport` **在每个WebSocket帧中
 当特化（ *specializing* ）传输模板时，某些上述任务将由模板类处理。根据模板，您可能需要实现的只是构造函数和`beforeChangePersistency`函数，以及任何所需的辅助函数。 但是，请注意，您仍然需要在构造函数中设置传输的静态属性。
 
 ### 2.3 链路服务（Link Service）
+
+***Link service*** （基类为`nfd::face::LinkService`）在 *Transport* 之上工作，并提供尽力而为的网络层数据包传递服务。***Link service* 必须在网络层数据包（*Interest* 、*Data* 和 *Nack* ）和链接层数据包（TLV块）之间转换**。另外，可以提供附加的链路服务，以弥合转发的需求和基础传输能力之间的差距。例如，如果基础传输具有最大传输单元（MTU）限制，则需要分片和重组以便发送和接收大于MTU的网络层数据包；如果基础传输的丢失率很高，则可以启用每链路重传（ *per-link retransmission* ）以减少丢失并提高性能。
+
+#### 2.3.1 通用链路服务（Generic Link Service）
+
+***Generic link service*** （`nfd::face::GenericLinkService`）是NFD默认的服务，它的链路层数据包的格式为NDNLPv2 [5]。
+
+NFD 从0.4.0开始，已经实现了以下功能：
+
+- Interest、Data和Nack 的编解码
+
+  Interest、Data和Nack 现在封装在`LpPackets`中（通用链接服务每个LpPacket仅支持一个网络层数据包或片段）。 LpPackets包含包头字段和一个片段，这允许逐跳信息与ICN信息分开。
+
+- 碎片和重组（索引碎片）
+
+  Interest和Data可以分片并逐跳重组，以允许遍历具有不同MTU的链接。
+
+- 消费者控制的转发（`NextHopFaceId`字段）
+
+  消费者可以使用`NextHopFaceId`字段指定在连接的转发器上应该从哪个 *Face* 发送兴趣包。
+
+- 本地缓存策略（`CachePolicy`字段）
+
+  `CachePolicy`字段使生产者可以指定一个策略，该策略决定是否应当应缓存数据。
+
+- 传入 *Face* 指示（`IncomingFaceId`字段）
+
+  可以将`IncomingFaceId`字段附加到`LpPacket`，以通知本地应用程序该数据包是从哪个 *Face* 传入的。
+
+还有一些下列计划将来实现的功能：
+
+- 故障检测（类似于BFD [6]）
+- 链路可靠性提高（重复请求，类似于ARQ [7]）
+
+具体启用哪些服务取决于传输类型：
+
+|              | Fragmentation | Local Fields (NextHopFaceId, CachePolicy, IncomingFaceId) |
+| ------------ | :-----------: | :-------------------------------------------------------: |
+| Internal     |               |                             √                             |
+| UnixStream   |               |                             *                             |
+| Ethernet     |       √       |                                                           |
+| UnicastUdp   |       √       |                                                           |
+| MulticastUdp |       √       |                                                           |
+| Tcp          |               |                             *                             |
+| WebSocket    |               |                                                           |
+
+> 上表中 \* 号表示当具有本地范围时，可以在这些传输类型上启用 *Local Fields* 。 可以通过enableLocalControl管理命令启用它们（请参见6.4节）。
+
+如果启用了数据包分片（ *fragmentation* ）功能并且链接的MTU受到限制，则链接服务（ *link service* ）会将封装在链接层数据包中的网络层数据包提交给分片器（ *fragmenter* ）。分片器的具体实现将在下面的单独部分中讨论。链接服务将每个分片交给 *Transport* 进行传输，如果未启用分片或链路具有无限的MTU，则将序列号（ *sequence* ）分配给数据包，并将其传递到传输器进行传输。
+
+当在另一端接收到链路层数据包时，该数据包将从 *Transport* 传递到链路服务（ *link service* ）。如果未在接收链接服务上启用分片，则将检查接收到的数据包的FragIndex和FragCount字段，如果包含它们则丢弃。然后将数据包提供给重组器（ *reassembler* ），重组器返回重组的数据包，但前提是接收到的片段已完成该数据包。然后将重组后的数据包解码并传递给 *Forwarding* 。否则，将不会进一步处理收到的片段。
+
+**通用链接服务（ *Generic Link Service* ）中的数据包分片和重组**：通用链接服务使用给数据包分片添加添加索引来实现分片（在2.5节中有更详细的描述）。
+
+- **发送端链接服务具有分片器（ *fragmenter* ）**，分片器返回封装在链路层数据包中的分片向量。如果数据包的大小小于MTU，则分片程序返回一个仅包含一个数据包的向量。链接服务为每个片段分配一个连续的序列号，如果有多个片段，则在每个片段中插入一个FragIndex和FragCount字段。FragIndex是片段相对于网络层数据包的从0开始的索引，而FragCount是从数据包产生的片段总数。
+- **接收链接服务有一个重组器（ *reassembler* ）**，重组器根据一个基于远程端点ID（请参见“Face - Internal Structure”-2.1）和数据包中第一个片段的序列号组合得到的键（ *key* ），使用 *map* 来跟踪接收到的片段。如果完成，它将返回重新组装的数据包。重组器还管理不完整数据包的超时，并在接收到第一个片段时设置丢弃计时器。收到数据包的新片段后，将重置该数据包的丢弃计时器。
+
+![图3  通用链路服务的内部结构](assets/1582706673885.png)
+
+<center>图3  通用链路服务的内部结构</center>
+
+#### 2.3.2 车辆链路服务（Vehicular Link Service）
+
+车辆链路服务（ *Vehicular Link Service* ）是一个计划实现的功能，用于实现适用于车辆网络的链路服务。
+
+#### 2.3.3 开发一种新的链路服务
+
+链接服务（ *link service* ）可以为 *Face* 提供许多服务，因此新的链接服务需要处理许多任务。至少，链接服务必须对传出的兴趣，数据和漏洞进行编码和解码。但是，根据新链接服务的预期用途，除任何其他需要的服务之外，还可能有必要实现诸如分段和重组，本地字段和序列号分配之类的服务。
+
+
 
