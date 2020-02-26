@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NFD论文翻译</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    <meta name="description" content="Description">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <link rel="stylesheet" href="//unpkg.com/docsify/lib/themes/vue.css">
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.css">
+    <link href="//cdn.bootcss.com/prism/9000.0.1/themes/prism.min.css" rel="stylesheet">
+</head>
+<body>
+<div id="app"></div>
+<script src="//cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="//cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+<script>
+    var num = 0;
+    mermaid.initialize({
+        startOnLoad: false,
+        flowchart: {
+            useMaxWidth: true,
+            htmlLabels: false,
+            curve: 'cardinal',
+        },
+    });
+
+    window.$docsify = {
+        name: 'ndn-paper-translation',
+        repo: 'https://github.com/SunnyQjm/ndn-paper-translation',
+        loadNavbar: true,
+        markdown: {
+            renderer: {
+                code: function (code, lang) {
+                    if (lang === "mermaid") {
+                        return (
+                            '<div class="mermaid">' + mermaid.render('mermaid-svg-' + num++, code) + "</div>"
+                        );
+                    }
+                    return this.origin.code.apply(this, arguments);
+                }
+            }
+        }
+    };
+    $(document).ready(function () {
+        $('pre').addClass("line-numbers").css("white-space", "pre-wrap");
+    })
+</script>
+<script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
+<script src="//unpkg.com/docsify-copy-code"></script>
+<script src="//unpkg.com/prismjs/components/prism-bash.min.js"></script>
+<script src="//unpkg.com/prismjs/components/prism-c.min.js"></script>
+<script src="//unpkg.com/prismjs/components/prism-cpp.min.js"></script>
+</body>
+</html>
