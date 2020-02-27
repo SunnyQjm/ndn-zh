@@ -357,5 +357,59 @@ NFD 从0.4.0开始，已经实现了以下功能：
 
 链接服务（ *link service* ）可以为 *Face* 提供许多服务，因此新的链接服务需要处理许多任务。至少，链接服务必须对传出的兴趣，数据和漏洞进行编码和解码。但是，根据新链接服务的预期用途，除任何其他需要的服务之外，还可能有必要实现诸如分段和重组，本地字段和序列号分配之类的服务。
 
+### 2.4 Face管理器、协议工厂和渠道（Face Manager, Protocol Factories, and Channels）
+
+NFD使用`FaceManager`来组织人脸，后者可以控制各个协议工厂（ *protocol factories* ）和通道（ *channels* ）。
+
+`FaceManager`（在第6.4节中详细介绍）管理 *Face* 的创建和销毁。 *Face* 是通过其协议专用工厂创建的（如下所述）。
+
+协议工厂管理特定协议类型的通道（单播）和多播 *Face* 。`ProtocolFactory`的子类需要实现`createFace`和`getChannels`虚函数。除了任何特定于协议的功能之外，还可以可选地实现`createChannel`，`createMulticastFace`和`getMulticastFaces`函数。
+
+通道（ *channels* ）侦听并处理传入的单播连接，并为特定本地端点（ *local endpoint* ）建立传出单播连接。这些动作中的任何一个成功都会产生 *Face* 。 调用`createChannel`函数时，由协议工厂创建通道。一旦一个新 *Face* 被创建，不管是传入还是传出的，都将调用指定的回调函数`FaceCreatedCallback`。 如果 *Face* 面部失败，则将调用`FaceCreationFailedCallback`。侦听套接字（或在WebSocket中为WebSocket服务器句柄）的所有权属于单个通道。连接到远程端点的套接字为与相关 *Face* 相关联的 *Transport* 所拥有，但对于WebSocket而言，所有 *Face* 均使用相同的服务器句柄。请注意，没有以太网通道，因为NFD中的以太网链接仅是多播。
+
+*Face* 需要规范的 *Face URI* ，而不是执行DNS解析，因为后者会在 *Face* 系统中造成不必要的开销。 DNS解析可以改为由外部库和实用程序执行，将解析后的规范 *Face URI* 提供给NFD。
+
+#### 2.4.1 根据配置创建Face
+
+创建通道（ *Channel* ）和多播 *Face* 的一种方法是来自配置文件。为了创建这些 *Face* 和 *Channel* ，`FaceManager`处理配置文件的`face_system`部分。对于文件中的每种协议类型，`FaceManager`都会创建一个协议工厂（如果尚不存在）。然后，`FaceManager`指导适当的工厂为每个启用的协议创建通道，具体取决于配置部分中的选项。 对于同时支持IPv4和IPv6的协议，如果启用，`FaceManager`可以指示工厂为它们创建一个通道。对于UDP和以太网等多播协议，如果启用了多播和其他相关选项，则`FaceManager`指示工厂在每个接口上创建一个多播 *Face* 。
+
+#### 2.4.2 使用命令行工具创建Face
+
+可以创建 *Face* 的另一种方法是使用 *faces / create* （`nfd face create`）命令。收到此命令后，NFD会在`FaceManager`中调用`createFace`函数。此命令解析提供的 *Face URI* 并从中提取协议类型。协议工厂存储在映射中，按协议类型排序。创建 *Face* 时，`FaceManager`通过从提供的 *Face URI*  解析协议类型来确定要使用的正确协议工厂。如果找不到匹配的协议工厂，则命令失败。否则，它将在相对应的协议工厂中调用`createFace`函数来创建 *Face* 。
+
+### 2.5 NDNLP
+
+NDN链接协议（ *NDN Link Protocol* v2）在 *forwarding* 与基础网络传输协议和系统（例如TCP，UDP，Unix套接字和以太网）之间提供了链接协议。它给 *forwarding* 的链接服务（ *link service* ）提供统一的接口，并在这些服务和基础网络层之间提供桥梁。通过这种方法，上层可以忽略这些底层的特定特征和机制。另外，链接协议提供每种链接类型共有的服务，具体实现因链接类型而异。链接服务还指定了通用的TLV链接层数据包格式。NDNLP当前提供的服务包括分片（ *fragmentation* ）和重组（ *reassembly* ），否定确认（ *Nacks* ），消费者控制的转发，高速缓存策略控制，以及向应用程序提供有关数据包传入 *face* 的信息。未来计划的功能包括链路故障检测（BFD）和ARQ。这些功能可以单独启用和禁用。
+
+![图4  FaceManager，Channel，ProtocolFactory和Face交互](assets/1582765318199.png)
+
+<center>图4  FaceManager，Channel，ProtocolFactory和Face交互</center>
+
+在NFD中，链接协议（ *Link Protocol* ）是在`LinkService`中实现的。 该链接协议替代了NDN链接协议（NDNLPv1）的先前版本[8]。
+
+下面是对链接协议提供的每个功能的描述：
+
+- **分片和重组（ *fragmentation and reassembly* ）**
+
+  分片和重组是使用索引分段（ *indexed fragmentation* ）逐跳完成的。对数据包进行分段，并为其分配一个`FragIndex`字段和一个`FragCount`字段，其中`FragIndex`指示分片的数据包中从零开始的索引，而`FragCount`代表该数据包的碎片总数。与网络层数据包关联的所有链路层包头仅附加到第一个片段上，其他不相关的链路层包头可以“搭载”在任何片段上。 接收者使用每个片段中的`FragIndex`和`FragCount`字段来重组完整的数据包。
+
+- **否定确认（ *Nacks* ）**
+
+  否定确认是向下游发送的消息，用于指示转发器（ *forwarder* ）无法满足特定的兴趣。相关的兴趣包含于 *Nack* 的 `Fragment` 域中。Nack本身由数据包中的Nack头字段指示（ *如果某个兴趣包的 Nack 字段有效，则标识这个是一个 Nack 包* ）。
+
+  *Nack* 可以选择包含`NackReason`字段（在Nack字段下），以指示转发器（ *forwarder* ）为何无法满足兴趣。 这些原因包括链路上的拥塞，检测到重复的Nonce，以及没有与兴趣匹配的路由。
+
+- **消费者控制的转发（ *consumer-controlled forwarding* ）**
+
+  消费者控制的转发允许应用程序指定应该从哪个指定的 *face* 将兴趣包发送出去。可以使用`NextHopFaceId`包头指示，该包头包含本地转发器上消费者指定用来发包的 *face* 接口的 *face* ID。
+
+- **缓存策略控制（ *cache policy control* ）**
+
+  通过缓存策略控制，生产者可以指示应是否应当缓存数据。这是通过包头中`CachePolicy`包头完成的，该包头包含`CachePolicyType`字段。 此内部字段中包含的非负整数表示此应用希望下游转发器遵循哪种缓存策略。
+
+- **入口 face 指示（ *incoming face indication* ）**
+
+  当一个 *face* 接收到一个特定的数据包时（ *packet* ）， 转发器可以通过将`IncomingFaceId`包头附加到数据包上来告知应用程序，这个数据包是从本地的那个 *face* 接收到的。该字段包含在其上接收到数据包的转发器上的 *face* 的 *face ID* 。
+
 
 
