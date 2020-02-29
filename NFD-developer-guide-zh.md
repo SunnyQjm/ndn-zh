@@ -16,7 +16,7 @@ NFD将在三个方面不断发展： **改进模块化框架** ， **符合NDN�
 
 <center>图1  NFD模块概览图</center>
 
-- **ndn-cxx Library, Core, and Tools** （第9节）
+- **ndn-cxx Library, Core, and Tools** （第10节）
 
   这些库提供不同NFD模块之间共享的各种通用服务。 其中包括哈希计算例程，DNS解析器，配置文件， *Face* 监控和其他几个模块。
 
@@ -26,7 +26,7 @@ NFD将在三个方面不断发展： **改进模块化框架** ， **符合NDN�
 
 - **Tables**（第3节）
 
-  实现内容存储（ *CS*, Content Store ）、待定兴趣表（ *PIT*, Pending Interest Table ）、转发信息库（ *FIB*, Forwarding Information Base ）、策略选择（ *StrategyChoice* ）、测量（*Measurements*）和其他数据结构，以支持NDN数据包和兴趣包的转发。
+  实现内容存储（ *CS*, Content Store ）、待定兴趣表（ *PIT*, Pending Interest Table ）、转发信息库（ *FIB*, Forwarding Information Base ）、策略选择（ *Strategy Choice* ）、测量（*Measurements*）和其他数据结构，以支持NDN数据包和兴趣包的转发。
 
 - **Forwarding**（第4节）
 
@@ -96,7 +96,7 @@ NFD收到控制命令请求后，会将请求定向到一个被称为“内部 *
 
 *Face* 为NDN网络层数据包提供尽力而为的传递服务。 *Forwarding* 可以通过 *Face* 发送和接收兴趣包（ *Interest packet* ），数据包（ *Data packet* ）和 Nack。 然后，该 *Face* 处理低层的通信机制（例如套接字），并对 *Forwarding* 隐藏不同底层协议的差异和细节。
 
-第2.1节介绍了 *Face* 的语义，转发方式以及它的内部结构包括 *Transport* （第2.2节）和 *LinkService* （第2.3节）。 2.4节介绍了 *Face* 的创建和组织方式。
+第2.1节介绍了 *Face* 的语义，转发方式以及它的内部结构包括 *Transport* （第2.2节）和 *LinkService* （第2.3节）。 2.4节介绍了 *Face* 的创建和组织方式。2.6节介绍了NDN的链路协议（`NDNLPv2`, *NDN Link Protocol* ），它是一种在 *Face* 系统中实现的链路自适应协议（ *link adaptation protocol* ）。
 
 ### 2.1 Face
 
@@ -116,7 +116,7 @@ NFD作为网络转发器，在网络接口之间移动数据包。NFD不仅可�
   - `on-demand`：设置为 *on-demand* 的 *Face* 保持空闲一段时间或在基础通信通道中发生错误，则它会关闭；
   - `persistent`：设置为 *persistent* 的 *Face* 会一直保持打开状态，直到被明确销毁，或者基础通信渠道发生错误；
   - `permanent`：设置为 *permanent* 的 *Face* 会一直保持打开状态，直到被明确销毁为止； 基础通信通道中的错误在内部得以恢复。
-- **`LinkType`** 指示通信链接的类型，它可以是点对点或多路访问，该属性是只读的；
+- **`LinkType`** 指示通信链接的类型，它可以是点对点（ *point-to-point* ）、多路访问（ *multi-access* ）或自组织网（ *ad hoc* ），该属性是只读的；
 - **`State`** 指示 *Face* 的当前可用性：
   - *`UP`* ：*Face* 正常工作
   - *`DOWN`* ：*Face* 暂时处于 *down* 的状态，正在恢复，可以发送数据包，但是不太可能发送成功
@@ -153,7 +153,7 @@ NFD作为网络转发器，在网络接口之间移动数据包。NFD不仅可�
 
 #### 2.2.1 Internal Transport
 
-内部传输（`nfd::face::InternalForwarderTransport`）是与内部客户端传输（`nfd::face::InternalClientTransport`）配对的传输。 在内部转发器传输上传输的数据包在配对的客户端传输上被接收，反之亦然。 这主要用于与NFD *management* 进行通信； 这也用于实现TopologyTester（第10.1.3节）以进行单元测试。
+内部传输（`nfd::face::InternalForwarderTransport`）是与内部客户端传输（`nfd::face::InternalClientTransport`）配对的传输。 在内部转发器传输上传输的数据包在配对的客户端传输上被接收，反之亦然。 这主要用于与NFD *management* 进行通信； 这也用于实现TopologyTester（第11.1.3节）以进行单元测试。
 
 #### 2.2.2 Unix Stream Transport
 
@@ -170,19 +170,51 @@ Unix流传输的静态属性有：
 - **`Scope`** ：*local*
 - **`Persistency`** ：固定为 *on-demand* ，不允许配置为其它值
 - **`LinkType`** ： *point-to-point*
-- **`Mtu`** ：*unlimited*
+- **`Mtu`** ：*unlimited* （ *for all relevant face commands, NFD returns actual MTU* ）
 
 `UnixStreamTransport`派生自`StreamTransport`，该 *Transport* 用于所有基于流的传输，包括Unix流和TCP。 `UnixStreamTransport`的大多数功能由`StreamTransport`处理。这样，当`UnixStreamTransport`收到超过最大包大小或无效的包时，传输进入失败状态并关闭。
 
 接收到的数据存储在缓冲区中，当前缓冲区中的数据量也已存储。每次接收时，传输都会处理缓冲区中的所有有效数据包（ *packet* ）。 然后，该 *UnixStreamTransport* 将任何剩余的八位位组（ *[octets](https://baike.baidu.com/item/%E5%85%AB%E6%AF%94%E7%89%B9%E7%BB%84/5920941?fr=aladdin)* ）复制到缓冲区的开头，并等待更多的八位位组，将新的八位位组追加到现有八位位组的末尾。
 
-#### 2.2.3 Ethernet Transport
+#### 2.2.3 以太网单播传输（Ethernet Unicast Transport）
 
-*Ethernet Transport*（`nfd::face::EthernetTransport`）是直接在以太网上进行通信的传输。
+*Ethernet Unicast Transport*（`nfd::face::UnicastEthernetTransport`）是直接在以太网上进行通信的传输。
 
-以太网传输当前仅支持多播。**在初始化或重新加载配置时，NFD会在每个支持多播的网络接口上自动创建以太网传输**。要禁用以太网多播传输，请在NFD配置文件中将`face_system.ether.mcast`选项更改为“ no”
+**NFD使用`EthernetChannel`在每个以太网兼容（ *Ethernet-compatible* ）的物理接口上监听到来的以太网帧** （其中不包括：回环接口- *loopback interface* 、点对点链路- *point-to-point links* 和GRE隧道- *GRE tunnels* ）。NFD将会为每个远程端点（ *remote endpoint* ）创建`UnicastEthernetTransport`，它可能是**从管理接口显示地调用`face/create`（ *nfd face create ..* ）命令创建的** ，也可能是**从新的远程端点接收到数据包时隐式地创建的** 。
 
-在NFD配置文件中的`face_system.ether.mcast`组选项上指定了多播组。必须将同一以太网段上的所有NDN主机配置为相同的多播组，以便彼此通信。 因此，建议保留默认的多播组设置。
+*Ethernet Unicast Transport* 的静态属性包含：
+
+- **`LocalUri`** ：`dev://ifname`，其中，`ifname`为网络接口的名字，例如：`dev://eth0`
+- **`RemoteUri`** ：`ethet://[ethernet-addr]`，其中，*ethernet-addr* 是远程的单播端点，例如：`ether://[01:00:5e:00:17:aa]`
+- **`Scope`** ：*non-local*
+- **`Persistency`** ：对于根据传入连接（ *incoming connections* ）隐式创建而来的，模式为 *on-demand* ，对于根据传出连接（ *outgoing connections* ）创建的，模式为 *persistent* 或 *permanent* （可以通过 `face/update` 管理命令来修改）
+- **`LinkType`** ：*point-to-point*
+- **`Mtu`** ：即为物理网络接口的 *MTU* （当前只能在face创建的时候设置）
+
+`UnicastEthernetTransport`使用 *libpcap* 句柄在以太网链路上进行发送和接收。通过激活接口来初始化句柄，然后，将链路层标头格式设置为EN10MB（该值标识生成的为以太网包），并将libpcap设置为仅捕获传入的数据包。句柄初始化之后，传输将设置一个数据包（ *packet* ）筛选器以仅捕获以太网帧包头中包类型为NDN类型（0x8624）并且是从与本地建立连接的远程端点，或者目的地址是本机的包。
+
+具体实现里将libpcap句柄与Boost Asio结合使用，在Asio提供的 `async_read_some` 中调用读取处理函数（ *read handle* ），然后在读取处理函数里面具体使用libpcap句柄收包。如果收到超大或无效的数据包，则将其丢弃。
+
+*Ethernet Unicast Transport* 依赖于NDNLPv2协议中的包分片（ *fragmentation* ）和包重组（ *reassembly* ）功能，这样才能够将包进行分片以使用链路的MTU，以及将分片重组得到完整的包。
+
+传出帧如果过小将填充零（ *padding with zero* ），以满足最小的以太网数据包大小。如果设置了非零的空闲超时，则具有按需（ *on-demand* ）持久性的以太网单播传输将可能超时。
+
+#### 2.2.4 以太网多播传输（Ethernet Multicast Transport） 
+
+以太网多播传输（`nfd::face::MulticastEthernetTransport`）是一种直接在以太网上通过多播进行通信的传输。**在初始化或重新加载配置时，NFD会在每个支持多播的网络接口上自动创建以太网传输**。 如果要禁用以太网多播传输，请在NFD配置文件中将`face_system.ether.mcast`选项更改为“ no”。在NFD配置文件中的`face_system.ether.mcast`组选项上指定了多播组。必须将同一以太网段上的所有NDN主机配置为相同的多播组，以便彼此通信。 因此，建议保留默认的多播组设置。
+
+在NFD配置文件的`face_system.ether`部分，可以指定白名单（ *whitelist* ）+黑名单（ *blacklist* ），以在可用网络接口的子集上创建多播以太网传输。 **白名单和黑名单的配置** 没有特定的顺序，配置条目可以是如下的值：
+
+- 网络接口的名字，例如：`ifname eth0`
+- 以太网MAC地址，例如：`85:3b:4d:d3:5f:c2`
+- IPv4子网，例如：`192.168.2.0/24`
+- 使用单个星号（*）来与系统上的所有网络接口匹配
+
+当前尚不支持IPv6地址/前缀申明。接口名称也可以表示为Unix Shell样式的通配符模式，也称为glob模式。 这种通配符模式的示例为：`ifname enp?48*`。请注意，这些模式与正则表达式不同。默认情况下，所有接口都列入白名单。
+
+将`face_system.ether.mcast`设置为“ no”将完全禁用以太网多播传输。
+
+以太网多播传输也支持 *ad hoc* 网络，可以通过NFD配置文件中的`face_system.ether.mcast_ad_hoc`选项进行配置。将此选项设置为“yes”，将传输的链接类型更改为ad hoc，这允许将兴趣和数据转发到传入的 *face* 。默认情况下，该选项设置为“ no”，这意味着创建的传输将具有多路访问链接类型。
 
 *Ethernet Transport* 的静态属性包含：
 
@@ -190,16 +222,14 @@ Unix流传输的静态属性有：
 - **`RemoteUri`** ：`ethet://[ethernet-addr]`，其中，*ethernet-addr* 是多播组，例如：`ether://[01:00:5e:00:17:aa]`
 - **`Scope`** ：*non-local*
 - **`Persistency`** ：固定为*permanent*，不允许配置为其它值
-- **`LinkType`** ：*multi-access*
+- **`LinkType`** ：*multi-access* 或 *ad hoc* 
 - **`Mtu`** ：即为物理网络接口的 *MTU*
 
 `EthernetTransport`使用 *libpcap* 句柄在以太网链路上进行发送和接收。通过激活接口来初始化句柄，然后，将链路层标头格式设置为EN10MB（该值标识生成的为以太网包），并将libpcap设置为仅捕获传入的数据包。句柄初始化之后，传输将设置一个数据包筛选器以仅捕获发送到多播地址的NDN类型（0x8624）的数据包。通过使用SIOCADDMULTI将地址直接添加到链路层多播过滤器，可以避免使用混杂模式。但是，如果失败，则接口可以退回到混杂模式。
 
 具体实现里将libpcap句柄与Boost Asio结合使用，在Asio提供的 `async_read_some` 中调用读取处理函数（ *read handle* ），然后在读取处理函数里面具体使用libpcap句柄收包。如果收到超大或无效的数据包，则将其丢弃。
 
-每个以太网链路都是自然支持多播通信的广播介质。尽管可以将这种广播媒体用作许多点对点链接，但这样做会失去NDN的本机多播优势，并增加NFD主机的工作量。因此，我们决定最好仅将以太网链接用作多路访问，并且不支持以太网单播。
-
-#### 2.2.4 UDP单播传输（UDP unicast Transport）
+#### 2.2.5 UDP单播传输（UDP unicast Transport）
 
 *UDP unicast transport* （`nfd::face::UnicastUdpTransport`）是一种通过IPv4或IPv6在UDP隧道上进行通信的传输。
 
@@ -211,7 +241,7 @@ UDP单播传输的静态属性包含：
   - IPv4 `udp4://ip:port` ，例如 `udp4://192.0.2.1:6363`
   - IPv6 `udp6://ip:port` ，其中，*ip* 为小写字母，并用方括号括起来，例如：`udp6://[2001:db8::1]:6363`
 - **`Scope`** ：*non-local*
-- **`Persistency`** ：从接受的套接字（ *accepted socket* ）创建的按需（ *on-demand* ）传输，为传出连接创建的传输则为持久（ *persistent* ）或永久（ *permanent* ），传输中允许更改持久性设置，但当前在`FaceManager`中禁止更改
+- **`Persistency`** ：从接受的套接字（ *accepted socket* ）创建的按需（ *on-demand* ）传输，为传出连接创建的传输则为持久（ *persistent* ）或永久（ *permanent* ）（可以通过 `face/update` 管理命令来修改）
 - **`LinkType`** ：*point-to-point*
 - **`Mtu`** ：最大IP长度减去IP和UDP包头
 
@@ -223,26 +253,31 @@ UDP单播传输的静态属性包含：
 
 除非具有永久持久性，否则单播UDP传输将因ICMP错误而失败。 但是，选择永久性持久性时，是没有 *UP/DOWN* 过渡的，需要使用尝试多个 *Face* 的策略。
 
-#### 2.2.5 UDP多播传输（UDP multicast Transport）
+#### 2.2.6 UDP多播传输（UDP multicast Transport）
 
 *UDP multicast transport* （`nfd::face::MulticastUdpTransport`）是在UDP多播组上进行通信的传输。
 
-在初始化或重新加载配置时，NFD会在每个支持多播的网络接口上自动创建UDP多播传输。要禁用UDP多播传输，请在NFD配置文件中将`face_system.udp.mcast`选项更改为“ no”。
+在初始化或重新加载配置时，NFD会在每个支持多播的网络接口上自动创建UDP多播传输。 在NFD配置文件的`face_system.udp.mcast`配置部分中，可以指定白名单（ *whitelist* ）+黑名单（ *blacklist* ），以在可用网络接口的子集上创建UDP多播传输。如果要禁用UDP多播传输，请在NFD配置文件中将`face_system.udp.mcast`选项更改为“ no”。
 
-UDP多播传输当前仅支持单跳上的IPv4多播。由于仅在单跳上支持UDP多播通信，并且几乎所有平台都支持IPv4多播，IPv6多播没有用例，因此不支持。在NFD配置文件中的`face_system.udp.mcast`组和`face_system.udp.mcast`端口选项上指定了多播组和端口号。必须将同一IP子网上的所有NDN主机配置为相同的多播组，以便彼此通信。因此，建议保留默认的多播组设置。
+可以在NFD的配置文件中对多播组和端口号进行配置：其中`face_system.udp.mcast_group`和`face_system.udp.mcast_port`用于IPv4，而`face_system.udp.mcast_group_v6`和`face_system.udp.mcast_port_v6`用于IPv6。必须将同一IP子网上的所有NDN主机配置为相同的多播组，以便彼此通信。因此，建议保留默认的多播组设置。
+
+UDP多播传输也支持 *ad hoc* 网络。 这可以通过NFD配置文件中的`face_system.udp.mcast_ad_hoc`选项进行配置。将此选项设置为“yes”，将传输的链接类型更改为 *ad hoc* ，这允许将兴趣和数据转发到传入的 *face*。 默认情况下，该选项设置为“ no”，这意味着创建的传输将具有多访问链接类型。
 
 UDP多播传输的静态属性包含：
 
 - **`LocalUri`**：`udp4://ip:port`，例如：`udp4://192.0.2.1:56363`
 - **`RemoteUri`**：`udp4://ip:port`，例如：`udp4://224.0.23.170:56363`
+- **`LocalUri`** 和 **`RemoteUri`**
+  - IPv4 `udp4://ip:port`，例如：`udp4://224.0.23.170:56363`
+  - IPv6 `udp6://ip:port`，其中，*ip* 为小写字母，并用方括号括起来，例如：`udp6://[ff02::114%eth0]:56363`
 - **`Scope`**：*non-local*
 - **`Persistency`**：*permanent*
-- **`LinkType`**：*multi-access*
-- **`Mtu`**：最大IP长度减去IP和UDP包头
+- **`LinkType`**：*multi-access* 或 `ad hoc`
+- **`Mtu`**：最大IP长度减去IP和UDP包头（ *for all relevant face commands, NFD returns actual MTU* ）
 
 `MulticastUdpTransport`派生自`DatagramTransport`。传输使用两个单独的套接字，一个用于发送，一个用于接收。这些功能在套接字之间相互分离，以防止将发送的数据包循环回发送套接字。
 
-#### 2.2.6 TCP Transport
+#### 2.2.7 TCP Transport
 
 *TCP Transport* （`nfd::face::TcpTransport`）是一种通过IPv4或IPv6在TCP隧道上进行通信的传输。
 
@@ -254,13 +289,13 @@ TCP传输的静态属性包含：
   - IPv4 `tcp4://ip:port`，例如：`tcp4://192.0.2.1:6363`
   - IPv6 `tcp6://ip:port`，其中，*ip* 为小写字母，并用方括号括起来，例如：`tcp6://[2001:db8::1]:6363`
 - **`Scope`**：如果远程端点使用的是回环IP（*localhost* 、*127.0.0.1* ），则为 *local* ，否则为 *non-local*
-- **`Persistency`**：从接受的套接字（ *accepted socket* ）创建按需传输（ *on-demand* ），为传出连接创建持久（ *persistent* ）传输，允许在按需和持久之间切换，永久性（ *permanent* ）未实现，但将来会得到支持
+- **`Persistency`**：从接受的套接字（ *accepted socket* ）创建按需传输（ *on-demand* ），为传出连接创建持久（ *persistent* ）传输（可以通过 `face/update` 管理命令来修改）
 - **`LinkType`**：*point-to-point*
-- **`Mtu`**：*unlimited*
+- **`Mtu`**：*unlimited* （ *for all relevant face commands, NFD returns actual MTU* ）
 
 与`UnixStreamTransport`一样，`TcpTransport`也是从`StreamTransport`派生的，因此可以在`UnixStreamTransport`部分（第2.2.2节）中找到它的其他详细信息。
 
-#### 2.2.7 WebSocket Transport
+#### 2.2.8 WebSocket Transport
 
 为了提高可靠性，**WebSocket** 在TCP之上实现了基于消息的协议。 WebSocket是许多Web应用程序用来维持与远程主机的长连接的协议。 **NDN.JS** 客户端库使用它在浏览器和NDN转发器之间建立连接。
 
@@ -273,7 +308,7 @@ WebSocket传输的静态属性包含：
 - **`Scope`**：如果远程端点使用的是回环IP（*localhost* 、*127.0.0.1* ），则为 *local* ，否则为 *non-local*
 - **`Persistency`**：*on-demand*
 - **`LinkType`**：*point-to-point*
-- **`Mtu`**：*unlimited*
+- **`Mtu`**：*unlimited* （ *for all relevant face commands, NFD returns actual MTU* ）
 
 WebSocket对NDN数据包的封装`WebSocketTransport` **在每个WebSocket帧中期望恰好一个NDN数据包或LpPacket。包含不完整或多个数据包的帧将被丢弃，事件将由NFD记录** 。 客户端应用程序（和库）不应将此类数据包发送到NFD。例如，Web浏览器中的JavaScript客户端应始终将完整的NDN数据包馈入`WebSocket.send()`接口。
 
@@ -281,11 +316,13 @@ WebSocket对NDN数据包的封装`WebSocketTransport` **在每个WebSocket帧中
 
 `WebSocketTransport`和`WebSocketChannel`之间的关系比大多数传输通道关系更紧密。这是因为消息是通过通道传递的。
 
-#### 2.2.8 开发一种新的Transport
+#### 2.2.9 开发一种新的Transport
 
-可以通过首先创建一个新的传输类来创建新的传输类型，该类可以从`StreamTransport`和`DatagramTransport`模板类之一特化（ *specializing* ）得到，或者从Transport基类继承。如果新的传输类型是直接从Transport基类继承的，那么您将需要实现一些虚拟函数，包括`beforeChangePersistency`，`doClose`和`doSend`，此外，还需要在构造函数中设置静态属性（`LocalUri`、`RemoteUri`、`Scope`、`Persistency`、`LinkType`和`Mtu`）。在需要的时候，您也可以设置传输状态和ExpirationTime。
+可以通过首先创建一个新的传输类来创建新的传输类型，该类可以从`StreamTransport`和`DatagramTransport`模板类之一特化（ *specializing* ）得到，或者从Transport基类继承。如果新的传输类型是直接从Transport基类继承的，那么您将需要实现一些纯虚函数，包括`doClose`和`doSend`，此外，还需要在构造函数中设置静态属性（`LocalUri`、`RemoteUri`、`Scope`、`Persistency`、`LinkType`和`Mtu`）。在需要的时候，您也可以设置传输状态和ExpirationTime。
 
-当特化（ *specializing* ）传输模板时，某些上述任务将由模板类处理。根据模板，您可能需要实现的只是构造函数和`beforeChangePersistency`函数，以及任何所需的辅助函数。 但是，请注意，您仍然需要在构造函数中设置传输的静态属性。
+当特化（ *specializing* ）传输模板时，某些前述任务可以由模板定义中的通用实现来处理。 根据模板，您可能需要实现的只是构造函数，以及任何所需的帮助程序功能。但是，请注意，您仍然需要在构造函数中设置传输的静态属性。
+
+如果希望新传输支持持久性更改，则将需要覆盖`canChangePersistencyToImpl`和`afterChangePersistency`两个虚成员函数。
 
 ### 2.3 链路服务（Link Service）
 
@@ -295,7 +332,7 @@ WebSocket对NDN数据包的封装`WebSocketTransport` **在每个WebSocket帧中
 
 ***Generic link service*** （`nfd::face::GenericLinkService`）是NFD默认的服务，它的链路层数据包的格式为NDNLPv2 [5]。
 
-NFD 从0.4.0开始，已经实现了以下功能：
+NFD 从0.6.1开始，已经实现了以下功能：
 
 - Interest、Data和Nack 的编解码
 
@@ -317,6 +354,9 @@ NFD 从0.4.0开始，已经实现了以下功能：
 
   可以将`IncomingFaceId`字段附加到`LpPacket`，以通知本地应用程序该数据包是从哪个 *Face* 传入的。
 
+- 拥塞信令（`CongestionMark`字段）
+  `CongestionMark`字段可用于向消费者和下游路由器发出当前拥塞级别的信号（有关详细信息，请参见第8节）。
+
 还有一些下列计划将来实现的功能：
 
 - 故障检测（类似于BFD [6]）
@@ -324,15 +364,16 @@ NFD 从0.4.0开始，已经实现了以下功能：
 
 具体启用哪些服务取决于传输类型：
 
-|              | Fragmentation | Local Fields (NextHopFaceId, CachePolicy, IncomingFaceId) |
-| ------------ | :-----------: | :-------------------------------------------------------: |
-| Internal     |               |                             √                             |
-| UnixStream   |               |                             *                             |
-| Ethernet     |       √       |                                                           |
-| UnicastUdp   |       √       |                                                           |
-| MulticastUdp |       √       |                                                           |
-| Tcp          |               |                             *                             |
-| WebSocket    |               |                                                           |
+|                   | Fragmentation | Local Fields (NextHopFaceId, CachePolicy, IncomingFaceId) |
+| ----------------- | :-----------: | :-------------------------------------------------------: |
+| Internal          |               |                             √                             |
+| UnixStream        |               |                             *                             |
+| UnicastEthernet   |       √       |                                                           |
+| MulticastEthernet |       √       |                                                           |
+| UnicastUdp        |       √       |                                                           |
+| MulticastUdp      |       √       |                                                           |
+| Tcp               |               |                             *                             |
+| WebSocket         |               |                                                           |
 
 > 上表中 \* 号表示当具有本地范围时，可以在这些传输类型上启用 *Local Fields* 。 可以通过enableLocalControl管理命令启用它们（请参见6.4节）。
 
@@ -340,7 +381,7 @@ NFD 从0.4.0开始，已经实现了以下功能：
 
 当在另一端接收到链路层数据包时，该数据包将从 *Transport* 传递到链路服务（ *link service* ）。如果未在接收链接服务上启用分片，则将检查接收到的数据包的FragIndex和FragCount字段，如果包含它们则丢弃。然后将数据包提供给重组器（ *reassembler* ），重组器返回重组的数据包，但前提是接收到的片段已完成该数据包。然后将重组后的数据包解码并传递给 *Forwarding* 。否则，将不会进一步处理收到的片段。
 
-**通用链接服务（ *Generic Link Service* ）中的数据包分片和重组**：通用链接服务使用给数据包分片添加添加索引来实现分片（在2.5节中有更详细的描述）。
+**通用链接服务（ *Generic Link Service* ）中的数据包分片和重组**：通用链接服务使用给数据包分片添加添加索引来实现分片（在2.6节中有更详细的描述）。
 
 - **发送端链接服务具有分片器（ *fragmenter* ）**，分片器返回封装在链路层数据包中的分片向量。如果数据包的大小小于MTU，则分片程序返回一个仅包含一个数据包的向量。链接服务为每个片段分配一个连续的序列号，如果有多个片段，则在每个片段中插入一个FragIndex和FragCount字段。FragIndex是片段相对于网络层数据包的从0开始的索引，而FragCount是从数据包产生的片段总数。
 - **接收链接服务有一个重组器（ *reassembler* ）**，重组器根据一个基于远程端点ID（请参见“Face - Internal Structure”-2.1）和数据包中第一个片段的序列号组合得到的键（ *key* ），使用 *map* 来跟踪接收到的片段。如果完成，它将返回重新组装的数据包。重组器还管理不完整数据包的超时，并在接收到第一个片段时设置丢弃计时器。收到数据包的新片段后，将重置该数据包的丢弃计时器。
@@ -357,33 +398,63 @@ NFD 从0.4.0开始，已经实现了以下功能：
 
 链接服务（ *link service* ）可以为 *Face* 提供许多服务，因此新的链接服务需要处理许多任务。至少，链接服务必须对传出的兴趣，数据和漏洞进行编码和解码。但是，根据新链接服务的预期用途，除任何其他需要的服务之外，还可能有必要实现诸如分段和重组，本地字段和序列号分配之类的服务。
 
-### 2.4 Face管理器、协议工厂和渠道（Face Manager, Protocol Factories, and Channels）
+### 2.4 FaceSystem、ProtocolFactory and Channel Classes
 
-NFD使用`FaceManager`来组织人脸，后者可以控制各个协议工厂（ *protocol factories* ）和通道（ *channels* ）。
-
-`FaceManager`（在第6.4节中详细介绍）管理 *Face* 的创建和销毁。 *Face* 是通过其协议专用工厂创建的（如下所述）。
-
-协议工厂管理特定协议类型的通道（单播）和多播 *Face* 。`ProtocolFactory`的子类需要实现`createFace`和`getChannels`虚函数。除了任何特定于协议的功能之外，还可以可选地实现`createChannel`，`createMulticastFace`和`getMulticastFaces`函数。
-
-通道（ *channels* ）侦听并处理传入的单播连接，并为特定本地端点（ *local endpoint* ）建立传出单播连接。这些动作中的任何一个成功都会产生 *Face* 。 调用`createChannel`函数时，由协议工厂创建通道。一旦一个新 *Face* 被创建，不管是传入还是传出的，都将调用指定的回调函数`FaceCreatedCallback`。 如果 *Face* 面部失败，则将调用`FaceCreationFailedCallback`。侦听套接字（或在WebSocket中为WebSocket服务器句柄）的所有权属于单个通道。连接到远程端点的套接字为与相关 *Face* 相关联的 *Transport* 所拥有，但对于WebSocket而言，所有 *Face* 均使用相同的服务器句柄。请注意，没有以太网通道，因为NFD中的以太网链接仅是多播。
-
-*Face* 需要规范的 *Face URI* ，而不是执行DNS解析，因为后者会在 *Face* 系统中造成不必要的开销。 DNS解析可以改为由外部库和实用程序执行，将解析后的规范 *Face URI* 提供给NFD。
-
-#### 2.4.1 根据配置创建Face
-
-创建通道（ *Channel* ）和多播 *Face* 的一种方法是来自配置文件。为了创建这些 *Face* 和 *Channel* ，`FaceManager`处理配置文件的`face_system`部分。对于文件中的每种协议类型，`FaceManager`都会创建一个协议工厂（如果尚不存在）。然后，`FaceManager`指导适当的工厂为每个启用的协议创建通道，具体取决于配置部分中的选项。 对于同时支持IPv4和IPv6的协议，如果启用，`FaceManager`可以指示工厂为它们创建一个通道。对于UDP和以太网等多播协议，如果启用了多播和其他相关选项，则`FaceManager`指示工厂在每个接口上创建一个多播 *Face* 。
-
-#### 2.4.2 使用命令行工具创建Face
-
-可以创建 *Face* 的另一种方法是使用 *faces / create* （`nfd face create`）命令。收到此命令后，NFD会在`FaceManager`中调用`createFace`函数。此命令解析提供的 *Face URI* 并从中提取协议类型。协议工厂存储在映射中，按协议类型排序。创建 *Face* 时，`FaceManager`通过从提供的 *Face URI*  解析协议类型来确定要使用的正确协议工厂。如果找不到匹配的协议工厂，则命令失败。否则，它将在相对应的协议工厂中调用`createFace`函数来创建 *Face* 。
-
-### 2.5 NDNLP
-
-NDN链接协议（ *NDN Link Protocol* v2）在 *forwarding* 与基础网络传输协议和系统（例如TCP，UDP，Unix套接字和以太网）之间提供了链接协议。它给 *forwarding* 的链接服务（ *link service* ）提供统一的接口，并在这些服务和基础网络层之间提供桥梁。通过这种方法，上层可以忽略这些底层的特定特征和机制。另外，链接协议提供每种链接类型共有的服务，具体实现因链接类型而异。链接服务还指定了通用的TLV链接层数据包格式。NDNLP当前提供的服务包括分片（ *fragmentation* ）和重组（ *reassembly* ），否定确认（ *Nacks* ），消费者控制的转发，高速缓存策略控制，以及向应用程序提供有关数据包传入 *face* 的信息。未来计划的功能包括链路故障检测（BFD）和ARQ。这些功能可以单独启用和禁用。
+目前整个NFD的 *face* 系统组织为 *FaceSystem—ProtocolFactory—Channel—Face* 层次结构。`FaceSystem`类是 *face* 系统的入口点，该 *face* 系统拥有若干个`ProtocolFactory`实例。每个`ProtocolFactory`子类都拥有单播通道和特定基础协议的多播 *face*。 *Channel* 表示特定基础协议的本地端点，并拥有绑定到该本地端点的单播 *face*。
 
 ![图4  FaceManager，Channel，ProtocolFactory和Face交互](assets/1582765318199.png)
 
 <center>图4  FaceManager，Channel，ProtocolFactory和Face交互</center>
+
+#### 2.4.1 初始化（ *Initialization* ）
+
+*Face* 系统具有两步初始化过程：
+
+- 首先，所有可用的`ProtocolFactory`类型都使用`NFD_REGISTER_PROTOCOL_FACTORY`宏让`FaceSystem`类知道它们，以便由`FaceSystem`构造函数实例化它们；
+- 其次，`FaceSystem`从配置解析器（第10.1节）接收`face_system`配置部分，并将必需的参数传递给可用的协议工厂，以此依次初始化 *channels* 和 *faces* 。
+
+每个`ProtocolFactory`子类都有一个“`factory id`”，并且必须重写`processConfig`方法，该方法将接收配置文件中`face_system.{factory-id}`配置部分。`FaceSystem::processConfig`遍历所有`ProtocolFactory`实例，并使用每个协议工厂对应的配置文件中的相关的配置调用`processConfig`。
+
+每个`ProtocolFactory`子类都可以在`face_system.{factory-id}`部分下定义自己的配置选项。根据协议工厂的能力和基础协议的特性，这可能包括启用标志（ *enable flags* ），端口号（ *port numbers* ），超时值（ *timeout values* ）等。另外，`ProtocolFactory`子类应当可以在省略其配置部分被省略时正确定义行为。通常，在这种情况下将禁用相应的协议。
+
+`ProtocolFactory::processConfig`不仅在首次初始化期间使用，还在配置重载期间调用（第10.1.3节）。为了使协议工厂有机会自行初始化，即使忽略了NFD配置文件中的`face_system.{factory-id}`配置部分，也会调用`ProtocolFactory :: processConfig`。但是，在当前的实现中，并非所有协议工厂都完全支持配置重载：在省略`face_system.{factory-id}`配置部分的情况下，它们可能保留初始配置，或仅部分禁用。
+
+#### 2.4.2 进一步分析ProtocolFactory内部（Inside a ProtocolFactory）
+
+协议工厂管理特定协议类型的通道（单播）和多播 *Face* 。`ProtocolFactory`的子类需要实现`createFace`和`getChannels`虚函数。除了任何特定于协议的功能之外，还可以可选地实现`createChannel`，`createMulticastFace`和`getMulticastFaces`函数。
+
+通道（ *channels* ）侦听并处理传入的单播连接，并为特定本地端点（ *local endpoint* ）建立传出单播连接。这些动作中的任何一个成功都会产生 *Face* 。 调用`createChannel`函数时，由协议工厂创建通道。一旦一个新 *Face* 被创建，不管是传入还是传出的，都将调用指定的回调函数`FaceCreatedCallback`。 如果 *Face* 面部失败，则将调用`FaceCreationFailedCallback`。侦听套接字（或在WebSocket中为WebSocket服务器句柄）的所有权属于单个通道。连接到远程端点的套接字为与相关 *Face* 相关联的 *Transport* 所拥有，但对于WebSocket而言，所有 *Face* 均使用相同的服务器句柄。~~请注意，没有以太网通道，因为NFD中的以太网链接仅是多播~~（ *2018年的文档中写的这句话，但实际上截止当时的版本，已经实现了以太网单播传输* ）。
+
+#### 2.4.3 传出的单播Face创建（Outgoing Unicast Face Creation）
+
+大多数传出的 *face* 是由`FaceManager`（第6.4节）创建的，以响应一个`faces/create`命令。该命令的参数包括远程`FaceUri`（第2.2节）。
+
+初始化`ProtocolFactory`实例后，其`ProtocolFactory::processConfig`方法应通过填充`ProtocolFactory::providedSchemes`容器，声明可将哪些`FaceUri` *scheme* （如果有的话）用于在此`ProtocolFactory`实例上创建传出的 *face* 。当`FaceManager`接收到`faces/create`命令时，远程`FaceUri`的 *scheme* 部分用于查找适当的`ProtocolFactory`实例，然后在实例上调用`ProtocolFactory::createFace`。
+
+每个`ProtocolFactory`子类都可以针对可接受的 *FaceUris* 定义自己的要求。通常，`FaceUri`必须采用规范形式。这消除了在NFD进程内部执行DNS解析的需要，从而减少了开销。*Face* 需要规范的 *Face URI* ，而不是执行DNS解析，因为后者会在 *Face* 系统中造成不必要的开销。 DNS解析可以改为由外部库和实用程序执行，将解析后的规范 *Face URI* 提供给NFD。
+
+大多数`ProtocolFactory`子类将单播 *face* 组织到`Channel`中。当协议工厂中有多个通道时，由工厂决定要使用哪个通道来创建新的 *face* 。通常，选择具有兼容的基础协议和端点的通道。
+
+#### 2.4.4 多播Face创建（Multicast Face Creation）
+
+`EthernetFactory`和`UdpFactory`可以创建多播 *face* 。在NFD配置文件的`face_system.ether`和`face_system.udp`配置部分中，有启用或禁用多播 *face* 的选项，以及白名单+黑名单，用于选择哪些网络接口应具有多播 *face* 。
+
+在`EthernetFactory::processConfig`和`UdpFactory::processConfig`中处理这些配置 *section* 之一时，与多播相关的配置选项将存储在工厂实例中。然后根据`ndn::NetworkMonitor`类提供的配置和可用网络接口的当前列表来创建或销毁多播 *face* 。 每当添加，删除或以其他方式更改网络接口时，`NetworkMonitor`发出的信号都会触发`EthernetFactory`和`UdpFactory`重新评估存储的配置，并根据需要创建或破坏多播 *face* 。
+
+### 2.5 NIC相关的永久Face（NIC-associated Permanent Faces）
+
+> [网络接口控制器](https://baike.baidu.com/item/Nic/427086?fr=aladdin)(英语：network interface controller，*NIC*)
+
+这是即将推出的功能（ *feature* ）。
+与NIC相关的永久性 *face* 是在OS级网络接口（物理或虚拟）上自动创建并绑定的永久性 *face* 。
+
+`NicFaces`类可协调所有与NIC相关的永久性 *face* 。 它由NFD配置文件中的`face_system.nicfaces` 部分配置，其中包含零个或多个“ *rules* ”； 每个规则都包含一个白名单+黑名单以选择网络接口，以及一个远程`FaceUri`，应该从每个匹配的网络接口向其创建传出单播 *face* 。
+
+通过在初始化过程中将scheme + dev添加到`ProtocolFactory::providedSchemes`容器中并覆盖`ProtocolFactory::doCreateNicFace`，`ProtocolFactory`子类可以声明自己为支持NIC相关的永久面孔。
+
+### 2.6 NDNLP
+
+NDN链接协议（ *NDN Link Protocol* v2）在 *forwarding* 与基础网络传输协议和系统（例如TCP，UDP，Unix套接字和以太网）之间提供了链接协议。它给 *forwarding* 的链接服务（ *link service* ）提供统一的接口，并在这些服务和基础网络层之间提供桥梁。通过这种方法，上层可以忽略这些底层的特定特征和机制。另外，链接协议提供每种链接类型共有的服务，具体实现因链接类型而异。链接服务还指定了通用的TLV链接层数据包格式。NDNLP当前提供的服务包括分片（ *fragmentation* ）和重组（ *reassembly* ），否定确认（ *Nacks* ），消费者控制的转发，高速缓存策略控制，以及向应用程序提供有关数据包传入 *face* 的信息。未来计划的功能包括链路故障检测（BFD）和ARQ。这些功能可以单独启用和禁用。
 
 在NFD中，链接协议（ *Link Protocol* ）是在`LinkService`中实现的。 该链接协议替代了NDN链接协议（NDNLPv1）的先前版本[8]。
 
@@ -410,6 +481,8 @@ NDN链接协议（ *NDN Link Protocol* v2）在 *forwarding* 与基础网络传�
 - **入口 face 指示（ *incoming face indication* ）**
 
   当一个 *face* 接收到一个特定的数据包时（ *packet* ）， 转发器可以通过将`IncomingFaceId`包头附加到数据包上来告知应用程序，这个数据包是从本地的那个 *face* 接收到的。该字段包含在其上接收到数据包的转发器上的 *face* 的 *face ID* 。
+
+## 3 表（ *Tables* ）
 
 
 
