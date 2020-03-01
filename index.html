@@ -70,7 +70,8 @@
         plugins: [
             function(hook, vm) {
                 hook.doneEach(function(){
-                    document.getElementById('gitalk-container').innerHTML = "";
+                    const elem = document.getElementById('gitalk-container');
+                    elem && (elem.innerHTML = "");
                     NewGitalk().render('gitalk-container');
                 });
             }
