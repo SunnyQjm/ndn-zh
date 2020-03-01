@@ -17,6 +17,29 @@
 <div id="app"></div>
 <script src="//cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 <script src="//cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+<!-- Gitalk 配置 -->
+<script src="//unpkg.com/docsify/lib/plugins/gitalk.min.js"></script>
+<script src="//unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    function NewGitalk() {
+        let id = decodeURI(`${window.location.pathname}${window.location.hash}`);
+        const title = `Gitalk评论${decodeURI(window.location.pathname)}${window.location.hash}`;
+        if (id.length > 50) {
+            id = id.substr(0, 50);
+        }
+        return new Gitalk({
+            title: title,
+            id: id,
+            clientID: 'fa290550335fbd43a74e',
+            clientSecret: '4c7ba77a9bb7f1f0694f29af4d18c00479bba5c6',
+            repo: 'ndn-zh',
+            owner: 'SunnyQjm',
+            admin: ['SunnyQjm'],
+            // facebook-like distraction free mode
+            distractionFreeMode: false
+        })
+    }
+</script>
 <script>
     var num = 0;
     mermaid.initialize({
@@ -42,8 +65,17 @@
                     return this.origin.code.apply(this, arguments);
                 }
             }
-        }
+        },
+        plugins: [
+            function(hook, vm) {
+                hook.doneEach(function(){
+                    document.getElementById('gitalk-container').innerHTML = "";
+                    NewGitalk().render('gitalk-container');
+                });
+            }
+        ]
     };
+    const gitalk = NewGitalk();
     $(document).ready(function () {
         $('pre').addClass("line-numbers").css("white-space", "pre-wrap");
     })
@@ -57,40 +89,6 @@
 <!-- CDN files for docsify-katex -->
 <script src="//cdn.jsdelivr.net/npm/docsify-katex@latest/dist/docsify-katex.js"></script>
 
-<!-- Gitalk 配置 -->
-<script src="//unpkg.com/docsify/lib/plugins/gitalk.min.js"></script>
-<script src="//unpkg.com/gitalk/dist/gitalk.min.js"></script>
-<script>
-  let id = decodeURI(`${window.location.pathname}${window.location.hash}`);
-  const title = `Gitalk评论${decodeURI(window.location.pathname)}${window.location.hash}`;
-  if(id.length > 50) {
-    id = id.substr(0, 50);
-  }
-  const gitalk = new Gitalk({
-    title: title,
-    id: id,
-    clientID: 'fa290550335fbd43a74e',
-    clientSecret: '4c7ba77a9bb7f1f0694f29af4d18c00479bba5c6',
-    repo: 'ndn-zh',
-    owner: 'SunnyQjm',
-    admin: ['SunnyQjm'],
-    // facebook-like distraction free mode
-    distractionFreeMode: false
-  })
-    // 监听URL中hash的变化，如果发现换了一个MD文件，那么刷新页面，解决整个网站使用一个gitalk评论issues的问题。
-    window.onhashchange = function(event){
-      if(event.newURL.split('?')[0] !== event.oldURL .split('?')[0]) {
-          let _id = decodeURI(`${window.location.pathname}${window.location.hash}`);
-         if(id.length > 50) {
-           _id = _id.substr(0, 50);
-          }
-          const _title = `Gitalk评论${decodeURI(window.location.pathname)}${window.location.hash}`;
-          gitalk.id = _id;
-          gitalk.title = _title;
-          gitalk.render('gitalk-container');
-      }
-    }
-</script>
 
 </body>
 </html>
