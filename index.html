@@ -62,11 +62,12 @@
 <script src="//unpkg.com/gitalk/dist/gitalk.min.js"></script>
 <script>
   let id = decodeURI(`${window.location.pathname}${window.location.hash}`);
+  const title = `Gitalk评论${decodeURI(window.location.pathname)}${window.location.hash}`;
   if(id.length > 50) {
     id = id.substr(0, 50);
   }
   const gitalk = new Gitalk({
-    title: `Gitalk评论${decodeURI(window.location.pathname)}${window.location.hash}`,
+    title: title,
     id: id,
     clientID: 'fa290550335fbd43a74e',
     clientSecret: '4c7ba77a9bb7f1f0694f29af4d18c00479bba5c6',
@@ -79,7 +80,14 @@
     // 监听URL中hash的变化，如果发现换了一个MD文件，那么刷新页面，解决整个网站使用一个gitalk评论issues的问题。
     window.onhashchange = function(event){
       if(event.newURL.split('?')[0] !== event.oldURL .split('?')[0]) {
-        location.reload()
+          let _id = decodeURI(`${window.location.pathname}${window.location.hash}`);
+         if(id.length > 50) {
+           _id = _id.substr(0, 50);
+          }
+          const _title = `Gitalk评论${decodeURI(window.location.pathname)}${window.location.hash}`;
+          gitalk.id = _id;
+          gitalk.title = _title;
+          gitalk.render('gitalk-container');
       }
     }
 </script>
