@@ -20,7 +20,7 @@
 <script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
 <script>
     function NewGitalk() {
-        let id = decodeURI(`${window.location.pathname}${window.location.hash}`);
+        let id = decodeURI(`${window.location.hash}`);
         const title = `Gitalk评论${decodeURI(window.location.pathname)}${window.location.hash}`;
         if (id.length > 50) {
             id = id.substr(0, 50);
@@ -53,6 +53,10 @@
     window.$docsify = {
         name: 'ndn-paper-translation',
         repo: 'https://github.com/SunnyQjm/ndn-paper-translation',
+        loadSidebar: true,
+        autoHeader: true,
+        subMaxLevel: 4,
+        auto2top: true,
         markdown: {
             renderer: {
                 code: function (code, lang) {

@@ -11,4 +11,5 @@
 
 - ## 开发指南：
 
-  - [NFD开发指南](NFD-developer-guide-zh.md)
+  - [NFD开发指南](nfd-developer-guide/chapter1.md)
+
